@@ -878,6 +878,9 @@ def main():
     output = {
         "root": PC_TO_NOTE[root_pc],
         "thaat": args.thaat,
+        "transcriber": "crepe",
+        "source_separation": "demucs",
+        "pitch_tracker": "torchcrepe",
         "duration": duration,
         "tempo": tempo,
         "beats": beats,

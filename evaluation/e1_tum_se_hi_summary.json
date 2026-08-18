@@ -16,5 +16,25 @@
   "separation_ratio_median": 0.7046,
   "separation_ratio_p10": 0.1577,
   "separation_ratio_p90": 0.9153,
-  "interpretation": "On this clip, CREPE and RMVPE largely agree on voiced pitch, while generic onset candidates rarely coincide with a local pitch change. Boundary/onset modeling is the first backend target; this is diagnostic evidence, not ground-truth accuracy."
+  "controls": {
+    "pyin_vocal": {
+      "voiced_fraction": 0.6963,
+      "voicing_disagreement_vs_crepe": 0.2624,
+      "median_abs_pitch_diff_semitones": 0.0955,
+      "within_0_5_semitones": 0.9824
+    },
+    "pyin_mixture": {
+      "voiced_fraction": 0.0449,
+      "voicing_disagreement_vs_crepe": 0.9148,
+      "median_abs_pitch_diff_semitones": 0.1705,
+      "within_0_5_semitones": 0.5833
+    },
+    "rmvpe_mixture": {
+      "voiced_fraction": 0.9143,
+      "voicing_disagreement_vs_crepe": 0.0939,
+      "median_abs_pitch_diff_semitones": 0.0861,
+      "within_0_5_semitones": 0.9289
+    }
+  },
+  "interpretation": "On this clip, CREPE and RMVPE largely agree on voiced pitch on both the separated vocal and original mixture, while generic onset candidates rarely coincide with a local pitch change. Boundary/onset modeling is the first backend target; this is diagnostic evidence, not ground-truth accuracy. pYIN is not a suitable replacement here because its voicing recall collapses on the mixture."
 }
