@@ -461,7 +461,7 @@ function collapseHeldMelody(melody) {
     const prevMidi = prev?.midi ?? parseNote(prev?.note)?.midi;
     const midi = s.midi ?? parseNote(s.note)?.midi;
     const flags = s.review_flags || [];
-    const explicitRetrigger = s.retrigger || flags.includes('possible_rearticulation');
+    const explicitRetrigger = s.retrigger || s.articulation === 'retrigger' || flags.includes('possible_rearticulation');
     const gap = prev ? (Number(s.start) - Number(prev.end)) : Infinity;
     const attack = Number(s.attack_energy || 0);
     const prevAttack = Number(prev?.attack_energy || 0);
@@ -551,7 +551,9 @@ function buildPerformancePlan(melody, tempo) {
         articulation: art,
         phraseId: pid, isPeak, isCadence, sargam: s.sargam,
         ornament: s.ornament, glide_to: s.glide_to, trill: s.trill, sustain: s.sustain,
-        graceNote: s.graceNote, graceDuration: s.graceDuration,
+        retrigger: s.retrigger, sourceArticulation: s.articulation,
+        graceNote: s.graceNote || s.grace_note,
+        graceDuration: s.graceDuration || s.grace_duration,
       });
     });
   }
@@ -1055,8 +1057,17 @@ function renderTranscription(data) {
           const p = plan[i];
           if (t >= p.performanceStart) {
             melTriggered = i;
-            if (p.note && p.note !== '-') {
-              if (p.render !== false) window.agentPlayNote(p.note, p.duration, p.velocity);
+            if (p.note && p.note !== '-' && p.render !== false) {
+              // Schedule slightly ahead of the source clock, but keep the
+              // source-relative onset. This preserves grace notes, meend,
+              // trills, confidence gates, and Human Touch articulation in the
+              // With Song path instead of bypassing them.
+              playOrnamentedNote(
+                p,
+                Math.max(0.02, Number(p.performanceStart) - t + 0.04),
+                p.duration,
+                p.velocity,
+              );
             }
           } else break;
         }
@@ -1321,6 +1332,7 @@ simBtn.addEventListener('click', () => {
         note: p.note, start: p.performanceStart - origin, duration: p.duration,
         velocity: p.velocity, ornament: p.ornament, glide_to: p.glide_to,
         trill: p.trill, graceNote: p.graceNote, graceDuration: p.graceDuration,
+        retrigger: p.retrigger, articulation: p.sourceArticulation,
         render: p.render,
       }));
     }

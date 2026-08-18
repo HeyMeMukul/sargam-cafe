@@ -615,7 +615,8 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         if octave is not None:
             entry["octave"] = int(octave)
         # preserve ornament/expression fields
-        for f in ('ornament', 'glide_to', 'trill', 'sustain', 'kan'):
+        for f in ('ornament', 'glide_to', 'trill', 'sustain', 'kan',
+                  'retrigger', 'articulation', 'grace_note', 'grace_duration'):
             if seg.get(f) is not None:
                 entry[f] = seg[f]
         # preserve reviewer metadata + raw evidence (audit trail) through merge
@@ -783,6 +784,10 @@ async def play_final_melody(segments, log_callback):
             "glide_to": seg.get("glide_to"),
             "trill": seg.get("trill"),
             "sustain": seg.get("sustain"),
+            "retrigger": seg.get("retrigger"),
+            "articulation": seg.get("articulation"),
+            "grace_note": seg.get("grace_note"),
+            "grace_duration": seg.get("grace_duration"),
         })
     solo = {
         "timeline_origin": "relative_to_solo_start",  # all `start` values are seconds from 0
