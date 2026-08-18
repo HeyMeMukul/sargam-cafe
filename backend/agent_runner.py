@@ -485,7 +485,14 @@ async def run_section_subagent(audio_filepath: str, start: float, end: float,
             prompt,
         ]
 
-        text = await run_agent_stream(cmd, log_callback, cost_tracker=cost_tracker)
+        try:
+            text = await run_agent_stream(cmd, log_callback, cost_tracker=cost_tracker)
+        except Exception as exc:
+            await log_callback(
+                f"[System] Section {section_idx}/{total_sections}: reviewer exception; "
+                f"using raw extraction ({type(exc).__name__})."
+            )
+            text = ""
         segments = parse_section_json(text or "")
         if segments:
             await log_callback(
@@ -688,17 +695,27 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
             slices[idx].append(seg)
 
         semaphore = asyncio.Semaphore(MAX_CONCURRENCY)
-        section_results = await asyncio.gather(*[
-            run_section_subagent(audio_filepath, s, e, final["root"], final["thaat"],
-                                 scale_notes, slices[i], log_callback, semaphore,
-                                 i + 1, n_sections, cost_tracker, tempo, beats)
-            for i, (s, e) in enumerate(sections)
-        ])
+        try:
+            section_results = await asyncio.gather(*[
+                run_section_subagent(audio_filepath, s, e, final["root"], final["thaat"],
+                                     scale_notes, slices[i], log_callback, semaphore,
+                                     i + 1, n_sections, cost_tracker, tempo, beats)
+                for i, (s, e) in enumerate(sections)
+            ])
+        except Exception as exc:
+            await log_callback(
+                f"[System] Section review aborted safely ({type(exc).__name__}); "
+                "preserving the raw extractor score."
+            )
+            section_results = None
 
         # --- Phase D: merge by timestamp ---
         merged = []
-        for segs in section_results:
-            merged.extend(segs)
+        if section_results is not None:
+            for segs in section_results:
+                merged.extend(segs)
+        else:
+            merged = full_segments
     else:
         reason = "reference-conditioned score" if guided_mode else "extractor evidence"
         await log_callback(
