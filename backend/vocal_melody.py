@@ -31,6 +31,7 @@ import hashlib
 import json
 import math
 import os
+import sys
 import tempfile
 import warnings
 
@@ -577,7 +578,10 @@ def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
                              and nn.get('_attack', 0) > 0.05)
             voicing_gap = (prev.get('voicing_confidence', 1) < 0.5
                            or nn.get('voicing_confidence', 1) < 0.5)
-            if strong_attack or voicing_gap:
+            # A strong onset alone can occur inside a sustained vowel. Only
+            # preserve a same-pitch retrigger when there is release evidence or
+            # a measurable inter-note gap; this prevents false piano tapping.
+            if voicing_gap or (strong_attack and gap > 0.012):
                 retrigger = True
         if retrigger:
             nn['retrigger'] = True

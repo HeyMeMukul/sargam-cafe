@@ -468,7 +468,11 @@ function collapseHeldMelody(melody) {
     // A zero-gap tracker split is normally one sung hold. Preserve a real
     // retrigger only when it has an explicit flag, a very strong attack, or a
     // separated onset; this prevents long vowels from sounding like tapping.
-    const strongRetrigger = attack >= 0.9 || (gap > 0.02 && attack > prevAttack + 0.35);
+    // A loud frame inside a continuous vowel is not enough to justify a new
+    // piano attack. Require a measurable release/gap before onset energy can
+    // authorize a retrigger; explicit model articulation remains authoritative.
+    const hasRelease = gap > 0.012 || Number(prev?.voicing_confidence || 1) < 0.5 || Number(s.voicing_confidence || 1) < 0.5;
+    const strongRetrigger = hasRelease && (attack >= 0.9 || (gap > 0.02 && attack > prevAttack + 0.35));
     if (prev && midi !== undefined && prevMidi === midi && gap <= 0.03 && !explicitRetrigger && !strongRetrigger) {
       prev.end = Math.max(Number(prev.end), Number(s.end));
       prev.velocity = Math.max(Number(prev.velocity || 0), Number(s.velocity || 0));
