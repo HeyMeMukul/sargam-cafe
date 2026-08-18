@@ -19,6 +19,8 @@ import tempfile
 import re
 import subprocess
 
+from reference_alignment import align_reference_phrases
+
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 VENV_PYTHON = os.path.join(BACKEND_DIR, "venv", "bin", "python3")
@@ -47,6 +49,7 @@ TARGET_SECTION_LEN = 6.0    # aim for ~6s per subagent section
 MAX_SECTIONS = 32           # upper bound on parallel sections
 MAX_CONCURRENCY = 10        # subagents running at once
 SECTION_REVIEW_MODE = os.getenv("SARGAM_SECTION_REVIEW", "off").strip().lower()
+REFERENCE_FILE = os.getenv("SARGAM_REFERENCE_FILE", "").strip()
 
 # Matches note names like C4, C#4, D#5, F#3, B2 inside a bash command
 NOTE_RE = re.compile(r"\b([A-G](?:#|b)?[0-9])\b")
@@ -566,6 +569,29 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         )
         merged = full_segments
 
+    # Optional song-specific alignment. This is deliberately opt-in: without
+    # SARGAM_REFERENCE_FILE the application remains a fully audio-derived
+    # transcriber. When enabled, the supplied sargam/lyrics annotation is
+    # aligned with monotonic DP and every guided pitch is provenance-marked.
+    reference_data = None
+    if REFERENCE_FILE and os.path.exists(REFERENCE_FILE):
+        try:
+            with open(REFERENCE_FILE, "r", encoding="utf-8") as f:
+                reference_data = json.load(f)
+            before_count = len(merged)
+            merged = align_reference_phrases(merged, reference_data, root_pc)
+            guided_count = sum(1 for s in merged if s.get("reference_guided"))
+            await log_callback(
+                f"[System] Reference alignment enabled: {guided_count} guided events "
+                f"from {before_count} detector events."
+            )
+        except Exception as exc:
+            await log_callback(f"[System] Reference alignment skipped: {exc}")
+    else:
+        await log_callback(
+            "[System] Reference alignment disabled; preserving audio-derived events."
+        )
+
     # Stop looping the player
     await log_callback("__MEDIA__:{\"action\": \"pause\"}")
 
@@ -658,7 +684,10 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
     deduped = []
     for seg in cleaned:
         m = seg.get("midi")
-        if deduped and m is not None and deduped[-1].get("midi") == m                 and abs(seg["start"] - deduped[-1]["start"]) < 0.06:
+        if (deduped and not seg.get("reference_guided")
+                and not deduped[-1].get("reference_guided")
+                and m is not None and deduped[-1].get("midi") == m
+                and abs(seg["start"] - deduped[-1]["start"]) < 0.06):
             # keep the event with higher confidence (or longer), merge flags
             keep = seg if (seg.get("pitch_confidence") or 0) >= (deduped[-1].get("pitch_confidence") or 0) else deduped[-1]
             for f in ('review_flags', 'review_reason'):
@@ -735,6 +764,11 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         "sargam_counts": sargam_counts,
         "transcriber": transcriber,
         "model_threshold": model_threshold,
+        "reference_alignment": {
+            "enabled": bool(reference_data),
+            "source": REFERENCE_FILE if reference_data else None,
+            "guided_events": sum(1 for s in final_cleaned if s.get("reference_guided")),
+        },
     }
 
     payload = {
@@ -746,6 +780,7 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         "model_threshold": model_threshold,
         "chords": chords,
         "melody": melody_out,
+        "reference_alignment": melody_out["reference_alignment"],
     }
     await log_callback(f"__TRANSCRIPTION__:{json.dumps(payload)}")
     await log_callback(f"[System] Transcription session completed. ({len(final_cleaned)} notes)")
