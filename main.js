@@ -508,7 +508,12 @@ function collapseRenderOrnaments(melody) {
 
 // Compute a full performance plan for the melody notes.
 function buildPerformancePlan(melody, tempo) {
-  melody = collapseRenderOrnaments(collapseHeldMelody(melody));
+  // Faithful mode is intentionally one-to-one with the backend score. Song-like
+  // mode may apply expressive collapse/ornament preparation as an explicit,
+  // reversible rendering choice.
+  melody = HT_STATE.mode === 'faithful'
+    ? (melody || []).map(s => ({ ...s }))
+    : collapseRenderOrnaments(collapseHeldMelody(melody));
   const seedRnd = mulberry32(HT_STATE.seed);
   const plan = [];
   const byPhrase = {};
@@ -533,7 +538,12 @@ function buildPerformancePlan(melody, tempo) {
       const uncertain = (s.pitch_confidence !== undefined && s.pitch_confidence < 0.35) &&
                         (s.voicing_confidence === undefined || s.voicing_confidence < 0.65);
       const measuredDur = Math.max(0, Number(s.end) - Number(s.start));
-      const render = !(uncertain && measuredDur < 0.28);
+      // Faithful mode is a score-audition path: never delete a detected event
+      // because of confidence or ornament hypotheses. Otherwise the renderer
+      // can hide precisely the short notes the user needs to inspect. Any
+      // confidence-based suppression belongs only to the explicitly optional
+      // Song-like performance mode.
+      const render = HT_STATE.mode === 'faithful' || !(uncertain && measuredDur < 0.28);
       if (uncertain) vel *= render ? 0.35 : 0.08;
       // cadence breath: extend release at phrase end
       let dur = s.end - s.start;
