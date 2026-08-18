@@ -87,6 +87,10 @@ export SARGAM_EVIDENCE_DIR=/absolute/path/to/evidence
 
 This side-channel is diagnostic only; it does not alter the melody payload. In the first E1 experiment on the supplied Tum Se Hi clip, CREPE and RMVPE agreed within 0.5 semitones on 96.5% of frames where both were voiced, while 74 of 76 generic librosa onsets had no local CREPE pitch change within 100 ms. This strongly prioritizes boundary/onset decoding research over another pitch-scale correction, but it is not a ground-truth accuracy claim.
 
+### Source-separation recovery
+
+Demucs is invoked with an explicit segment length and one shorter retry because library versions can reject an input chunk before pitch tracking. If both attempts fail, the backend continues with a mono mixture fallback instead of terminating the whole transcription. The payload marks this as `source_separation: "mixture_fallback"` and includes `source_separation_warning`; it is a recoverability path, not an accuracy improvement. A clean result should report `source_separation: "demucs"`.
+
 ### Optional reference-conditioned mode
 
 When the user has a trusted sargam sequence for a specific clip, `SARGAM_REFERENCE_FILE` enables an isolated reference-conditioned score. The backend automatically exports frame evidence, aligns exactly one event per supplied token, preserves repeated same-pitch tokens as retriggers, and disables the lossy section-review and duplicate-collapse stages for that guided score.

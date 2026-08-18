@@ -881,6 +881,8 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         "model_threshold": model_threshold,
         "reference_alignment": bool(melody.get("reference_alignment")),
         "reference_file": melody.get("reference_file"),
+        "source_separation": melody.get("source_separation"),
+        "source_separation_warning": melody.get("source_separation_warning"),
     }
 
     payload = {
@@ -892,6 +894,8 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         "model_threshold": model_threshold,
         "reference_alignment": bool(melody.get("reference_alignment")),
         "reference_file": melody.get("reference_file"),
+        "source_separation": melody.get("source_separation"),
+        "source_separation_warning": melody.get("source_separation_warning"),
         "chords": chords,
         "melody": melody_out,
     }

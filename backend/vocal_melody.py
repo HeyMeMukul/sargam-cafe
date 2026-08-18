@@ -197,17 +197,43 @@ def separate_vocals(audio_filepath: str):
     wav = AudioFile(audio_filepath).read(
         streams=0, samplerate=model.samplerate, channels=model.audio_channels)
     ref = wav.mean(0)
-    wav = (wav - ref.mean()) / ref.std()
-    sources = apply_model(model, wav[None], device=device, split=True,
-                          overlap=0.25, progress=False)[0]
-    sources = sources * ref.std() + ref.mean()
+    ref_mean = ref.mean()
+    ref_std = ref.std().clamp_min(1e-6)
+    normalized = (wav - ref_mean) / ref_std
+
+    # Demucs versions differ in how they infer chunk length. The browser run
+    # exposed a hard failure (`chunk is longer than limit`) before transcription
+    # started, so pass an explicit segment and retry once with a shorter window.
+    sources = None
+    separation_error = None
+    default_segment = float(getattr(model, 'segment', 7.8) or 7.8)
+    for segment in (default_segment, min(default_segment, 4.0)):
+        try:
+            sources = apply_model(
+                model, normalized[None], device=device, split=True,
+                segment=segment, overlap=0.20, progress=False
+            )[0]
+            break
+        except Exception as exc:
+            separation_error = exc
 
     stems = model.sources
     out_dir = os.path.join(CACHE_DIR, base, "htdemucs")
     os.makedirs(out_dir, exist_ok=True)
-    vocals_path = os.path.join(out_dir, 'vocals.wav')
-    save_audio(sources[stems.index('vocals')], vocals_path, model.samplerate)
-    return vocals_path
+    if sources is not None:
+        sources = sources * ref_std + ref_mean
+        vocals_path = os.path.join(out_dir, 'vocals.wav')
+        save_audio(sources[stems.index('vocals')], vocals_path, model.samplerate)
+        return vocals_path
+
+    # Never terminate the whole transcription because separation failed. The
+    # original mono mix is lower quality but usable; provenance is exposed in
+    # the output so it cannot be mistaken for a Demucs stem.
+    fallback = os.path.join(out_dir, 'mixture_fallback.wav')
+    save_audio(ref.unsqueeze(0), fallback, model.samplerate)
+    with open(os.path.join(out_dir, 'separation_warning.txt'), 'w', encoding='utf-8') as fh:
+        fh.write(str(separation_error or 'unknown Demucs separation error'))
+    return fallback
 
 
 def pitch_track_torchcrepe(vocals_path: str):
@@ -875,11 +901,12 @@ def main():
     for seg in melody:
         sargam_counts[seg['sargam']] = sargam_counts.get(seg['sargam'], 0) + 1
 
+    separation_mode = "mixture_fallback" if os.path.basename(vocals_path) == "mixture_fallback.wav" else "demucs"
     output = {
         "root": PC_TO_NOTE[root_pc],
         "thaat": args.thaat,
         "transcriber": "crepe",
-        "source_separation": "demucs",
+        "source_separation": separation_mode,
         "pitch_tracker": "torchcrepe",
         "duration": duration,
         "tempo": tempo,
@@ -887,6 +914,9 @@ def main():
         "melody": melody,
         "sargam_counts": sargam_counts,
     }
+    warning_file = os.path.join(os.path.dirname(vocals_path), "separation_warning.txt")
+    if separation_mode == "mixture_fallback" and os.path.exists(warning_file):
+        output["source_separation_warning"] = open(warning_file, encoding="utf-8").read().strip()[:500]
     if args.evidence_out:
         try:
             evidence_path = write_evidence_json(
