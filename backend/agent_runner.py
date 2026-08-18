@@ -50,6 +50,7 @@ SECTION_REVIEW_MODE = os.getenv("SARGAM_SECTION_REVIEW", "off").strip().lower()
 # Optional research side-channel; unset by default so normal runs are unchanged.
 EVIDENCE_DIR = os.getenv("SARGAM_EVIDENCE_DIR", "").strip()
 REFERENCE_FILE = os.getenv("SARGAM_REFERENCE_FILE", "").strip()
+CHROMATIC_BRIDGE_MODE = os.getenv("SARGAM_CHROMATIC_BRIDGE", "on").strip().lower()
 
 # Matches note names like C4, C#4, D#5, F#3, B2 inside a bash command
 NOTE_RE = re.compile(r"\b([A-G](?:#|b)?[0-9])\b")
@@ -516,7 +517,8 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
     await log_callback(
         f"[System] Runtime config: transcriber={TRANSCRIBER_MODE or 'auto'}, "
         f"key_agent={KEY_AGENT_MODE or 'auto'}, section_review={SECTION_REVIEW_MODE or 'off'}, "
-        f"reference={'on' if REFERENCE_FILE else 'off'}"
+        f"reference={'on' if REFERENCE_FILE else 'off'}, "
+        f"decoder=chromatic_bridge_{CHROMATIC_BRIDGE_MODE or 'on'}"
     )
     cost_tracker = CostTracker()
 

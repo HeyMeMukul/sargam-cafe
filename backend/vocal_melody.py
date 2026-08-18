@@ -48,6 +48,12 @@ INTERVAL_TO_SARGAM = {
     6: 'ma', 7: 'Pa', 8: 'dha', 9: 'Dha', 10: 'ni', 11: 'Ni',
 }
 
+# A short chromatic bridge between two adjacent in-scale tones is represented as
+# a glide rather than as a separate piano attack. This is opt-out because the
+# measured Tum Se Hi evidence contains C/D boundary artifacts, but chromatic
+# notes remain preserved everywhere else.
+CHROMATIC_BRIDGE_MODE = os.getenv('SARGAM_CHROMATIC_BRIDGE', 'on').strip().lower()
+
 THAAT_INTERVALS = {
     'Bilawal': [0, 2, 4, 5, 7, 9, 11],
     'Kalyan':  [0, 2, 4, 6, 7, 9, 11],
@@ -394,6 +400,45 @@ def _smooth_notes_dp(notes):
     return _merge_short_notes(_collapse_octave_errors(notes))
 
 
+def _collapse_chromatic_bridges(notes, root_pc, intervals, max_duration=0.28):
+    """Represent a short chromatic passing event as a glide when evidence supports it.
+
+    This is deliberately narrower than scale correction: the middle event must be
+    out of scale, both neighbours must be in scale, the neighbours must be two
+    semitones apart, and the measured raw pitch must lie between them. The event
+    is removed from the piano attack stream, while the preceding event receives a
+    glide_to marker so the pitch contour is not silently rewritten.
+    """
+    if not notes or root_pc is None or not intervals:
+        return list(notes)
+    scale_pcs = {(int(root_pc) + int(iv)) % 12 for iv in intervals}
+    out = [dict(n) for n in notes]
+    i = 1
+    while i < len(out) - 1:
+        prev, cur, nxt = out[i - 1], out[i], out[i + 1]
+        cur_pc = int(cur.get('midi', 0)) % 12
+        prev_pc = int(prev.get('midi', 0)) % 12
+        next_pc = int(nxt.get('midi', 0)) % 12
+        raw = float(cur.get('raw_midi_float', cur.get('midi', 0)))
+        lo, hi = sorted((int(prev.get('midi', 0)), int(nxt.get('midi', 0))))
+        eligible = (
+            cur_pc not in scale_pcs and prev_pc in scale_pcs and next_pc in scale_pcs
+            and (float(cur.get('end', 0.0)) - float(cur.get('start', 0.0))) <= max_duration
+            and abs(int(nxt.get('midi', 0)) - int(prev.get('midi', 0))) == 2
+            and lo - 0.15 <= raw <= hi + 0.15
+        )
+        if eligible:
+            prev['end'] = nxt['start']
+            if not prev.get('ornament'):
+                prev['ornament'] = 'meend'
+            prev['glide_to'] = int(nxt['midi'])
+            out.pop(i)
+            i = max(1, i - 1)
+        else:
+            i += 1
+    return out
+
+
 def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
                   brightness=None, root_pc=None, intervals=None,
                   min_dur=0.035, period_thresh=0.4):
@@ -637,6 +682,8 @@ def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
     # Evidence fields (raw_midi_float, cents_deviation, pitch/voicing confidence,
     # attack_energy, brightness) are carried through the merge.
     merged = _smooth_notes_dp(merged)
+    if CHROMATIC_BRIDGE_MODE in {'on', 'auto'}:
+        merged = _collapse_chromatic_bridges(merged, root_pc, intervals)
 
     # strip internal features; flag true sustains
     out = []
@@ -907,8 +954,9 @@ def main():
         "thaat": args.thaat,
         "transcriber": "crepe",
         "source_separation": separation_mode,
-        "pitch_tracker": "torchcrepe",
-        "duration": duration,
+        'pitch_tracker': 'torchcrepe',
+        'decoder_profile': 'crepe_chromatic_bridge_v1' if CHROMATIC_BRIDGE_MODE in {'on', 'auto'} else 'crepe_raw',
+        'duration': duration,
         "tempo": tempo,
         "beats": beats,
         "melody": melody,

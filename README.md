@@ -87,6 +87,12 @@ export SARGAM_EVIDENCE_DIR=/absolute/path/to/evidence
 
 This side-channel is diagnostic only; it does not alter the melody payload. In the first E1 experiment on the supplied Tum Se Hi clip, CREPE and RMVPE agreed within 0.5 semitones on 96.5% of frames where both were voiced, while 74 of 76 generic librosa onsets had no local CREPE pitch change within 100 ms. This strongly prioritizes boundary/onset decoding research over another pitch-scale correction, but it is not a ground-truth accuracy claim.
 
+### Chromatic bridge decoder
+
+The default CREPE decoder now uses a narrow `crepe_chromatic_bridge_v1` cleanup. It does **not** snap arbitrary notes to the scale. It removes a short out-of-scale event only when both neighboring events are in-scale, the neighbors are exactly two semitones apart, and the measured raw pitch lies between them. The preceding event receives a `meend`/`glide_to` marker so the measured contour is represented without an extra piano attack. All other chromatic events remain preserved.
+
+Set `SARGAM_CHROMATIC_BRIDGE=off` to restore the raw event stream for A/B comparison. On the supplied Tum Se Hi extraction, the same-code comparison changed 39 events / 7 scale-disagreement events / phrase edit distance 16 to 35 events / 4 scale-disagreement events / phrase edit distance 15 using the user-provided diagnostic phrases. This is a measured reduction in the identified passing-tone artifacts, not a claim of perfect transcription; manually verified onset/offset annotations remain required for acceptance.
+
 ### Source-separation recovery
 
 Demucs is invoked with an explicit segment length and one shorter retry because library versions can reject an input chunk before pitch tracking. If both attempts fail, the backend continues with a mono mixture fallback instead of terminating the whole transcription. The payload marks this as `source_separation: "mixture_fallback"` and includes `source_separation_warning`; it is a recoverability path, not an accuracy improvement. A clean result should report `source_separation: "demucs"`.
