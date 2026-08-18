@@ -486,6 +486,11 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         return
 
     await log_callback("[System] Initializing Piano Master Agent...")
+    await log_callback(
+        f"[System] Runtime config: transcriber={TRANSCRIBER_MODE or 'auto'}, "
+        f"key_agent={KEY_AGENT_MODE or 'auto'}, section_review={SECTION_REVIEW_MODE or 'off'}, "
+        f"reference={'on' if REFERENCE_FILE else 'off'}"
+    )
     cost_tracker = CostTracker()
 
     # --- Phase 0: vocal pitch-class duration (root-independent tonic cue) ---
