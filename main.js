@@ -674,7 +674,6 @@ function playOrnamentedNote(seg, when, dur, vel) {
   // attacks. Faithful mode renders the measured melody only; Song-like mode
   // opts into ornament playback. This prevents false kan/gamak/meend labels
   // from sounding like repeated key tapping in the default path.
-  if (HT_STATE.mode !== 'songlike' && seg.ornament === 'kan') return;
   if (HT_STATE.mode !== 'songlike' || !seg.ornament) {
     notationTimers.push(setTimeout(() => {
       window.agentPlayNote(note, dur, vel);
