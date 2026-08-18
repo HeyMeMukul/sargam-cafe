@@ -15,16 +15,64 @@ AI ear-training & song transcription — upload any song and get a human-like pi
 - **ML/audio**: Demucs (vocal separation), torchcrepe (pitch tracking), librosa, Basic-Pitch (fallback)
 - **AI agents**: main agent + parallel section reviewers on the DeepSeek free model
 
-## Quick start
-```bash
-# Backend (port 8000)
-cd backend
-./venv/bin/python -m uvicorn main:app --port 8000
+## Installation
 
-# Frontend
-npm install
-npm run dev
+### Prerequisites
+- **Python 3.10+**
+- **Node.js 18+** (for the Vite frontend)
+- **ffmpeg** (required by Demucs for audio decoding):
+  ```bash
+  # Debian/Ubuntu
+  sudo apt install ffmpeg
+  # macOS
+  brew install ffmpeg
+  ```
+- **CUDA GPU (optional but recommended)** — the vocal-melody pipeline runs torchcrepe on GPU when available and falls back to CPU otherwise.
+
+### 1. Backend
+The backend has many dependencies, including heavyweight ML libraries (torch, torchaudio, demucs, torchcrepe). Install them **in this order** so torch matches your machine's CUDA/CPU:
+
+```bash
+cd backend
+
+# 1a) Create + activate a virtualenv
+python3 -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+
+# 1b) Install torch/torchaudio FIRST from pytorch.org so it matches your CUDA
+#     (CPU-only example; pick your CUDA version on https://pytorch.org/get-started)
+pip install torch torchaudio
+
+# 1c) Install everything else from requirements.txt
+pip install -r requirements.txt
+
+# 1d) Run the backend (port 8000)
+./venv/bin/python -m uvicorn main:app --port 8000
 ```
 
+> **Note on requirements.txt:** the base list (fastapi, librosa, numpy, basic-pitch, mir-eval, etc.) is at the top. The heavy ML deps (torch, torchaudio, `demucs==4.1.0`, `torchcrepe==0.0.24`) are listed at the bottom with a note — **install torch/torchaudio separately first** (step 1b) to avoid downloading a mismatched binary, then `pip install -r requirements.txt` pulls in the rest.
+
+### 2. Frontend
+```bash
+# from the project root
+npm install
+npm run dev        # dev server
+npm run build      # production build (dist/)
+```
+
+### 3. AI agents (optional)
+The transcription uses the `opencode` CLI (main agent + section reviewers on a free DeepSeek model). Install it separately if you want agent-driven transcription:
+```bash
+# see https://opencode.ai/docs for your platform
+# ensure `opencode` is on your PATH
+```
+Without it, the deterministic audio pipeline (key → chords → melody) still runs; only the LLM validation subagents are skipped.
+
+## Usage
+1. Start the backend and frontend.
+2. Open the app in the browser, click **Load Track**, pick a song.
+3. The pipeline runs: key detection → chord detection → vocal melody extraction → phrase-aware "Human Touch" rendering.
+4. Use the sidebar to toggle **Chords / Melody / With Song** layers and the **Human Touch** sliders (Expression, Rubato, Cadence breath, Pedal, Melody prominence, Seed).
+
 ## Evaluation
-`evaluation/` contains a mir_eval-based benchmark (`benchmark.py`) and a reference-annotation helper (`make_reference.py`) to measure transcription accuracy (onset F1, note F1, octave-error rate, note-count ratio).
+`evaluation/` contains a mir_eval-based benchmark (`benchmark.py`) and reference-annotation helpers (`make_reference.py`, `validate_phrases.py`) to measure transcription accuracy (onset F1, note F1, octave-error rate, note-count ratio).

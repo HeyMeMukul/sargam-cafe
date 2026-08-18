@@ -14,3 +14,11 @@ importlib-resources
 resampy
 mir-eval
 basic-pitch
+
+# Heavy ML deps (required for vocal-melody pipeline)
+# NOTE: install torch/torchaudio from https://pytorch.org first to match your CUDA/CPU
+# then uncomment and install the rest:
+torch
+torchaudio
+demucs==4.1.0
+torchcrepe==0.0.24
