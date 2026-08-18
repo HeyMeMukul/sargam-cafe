@@ -21,7 +21,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-import librosa
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -47,6 +46,7 @@ def _note_name(midi: int) -> str:
 
 
 def _tempo_and_beats(audio_path: str):
+    import librosa
     y, sr = librosa.load(audio_path, sr=22050, mono=True)
     tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr, trim=False)
     tempo_value = float(np.asarray(tempo).reshape(-1)[0]) if np.asarray(tempo).size else None
@@ -54,7 +54,7 @@ def _tempo_and_beats(audio_path: str):
     return tempo_value, beats, float(len(y) / sr)
 
 
-def _run_rosvot(stem: Path, output_dir: Path) -> Path:
+def _run_rosvot(stem: Path, output_dir: Path) -> tuple[Path, Path | None]:
     if not ROSVOT_DIR.exists():
         raise FileNotFoundError(
             f"ROSVOT directory not found: {ROSVOT_DIR}. Set SARGAM_ROSVOT_DIR or install it under third_party/ROSVOT."
@@ -75,7 +75,10 @@ def _run_rosvot(stem: Path, output_dir: Path) -> Path:
         "-o", str(output_dir), "-p", str(stem),
         "--ckpt", str(model_ckpt), "--wbd_ckpt", str(wbd_ckpt),
         "--thr", str(THRESHOLD), "--ds_workers", "0",
-        "--no_save_midi", "--no_save_final_npy",
+        # Keep ROSVOT's MIDI artifact: it contains the real note intervals.
+        # The [note]output.npy file stores only durations, so reconstructing
+        # time by summing durations destroys rests and phrase timing.
+        "--no_save_final_npy",
     ]
     proc = subprocess.run(cmd, cwd=str(ROSVOT_DIR), env=env, capture_output=True, text=True)
     if proc.returncode != 0:
@@ -83,40 +86,96 @@ def _run_rosvot(stem: Path, output_dir: Path) -> Path:
     npy = output_dir / "npy" / "[note]output.npy"
     if not npy.exists():
         raise RuntimeError(f"ROSVOT completed without output: {proc.stdout[-2000:]}")
-    return npy
+    midi = output_dir / "midi" / "output.mid"
+    return npy, (midi if midi.exists() else None)
+
+
+def _read_midi_events(midi_path: Path) -> list[dict]:
+    """Read ROSVOT's saved note intervals without losing rests or offsets."""
+    import pretty_midi
+
+    pm = pretty_midi.PrettyMIDI(str(midi_path))
+    events = []
+    for instrument in pm.instruments:
+        for note in instrument.notes:
+            if note.end <= note.start or note.pitch <= 0:
+                continue
+            events.append({
+                "start": round(float(note.start), 4),
+                "end": round(float(note.end), 4),
+                "midi": int(note.pitch),
+                "velocity": round(float(note.velocity) / 127.0, 3),
+            })
+    events.sort(key=lambda x: (x["start"], x["midi"], x["end"]))
+    for previous, current in zip(events, events[1:]):
+        same_pitch = previous["midi"] == current["midi"]
+        gap = current["start"] - previous["end"]
+        if same_pitch and 0 <= gap <= 0.03:
+            current["retrigger"] = True
+            current["articulation"] = "retrigger"
+    return events
 
 
 def extract(audio_path: str, root: str = "C", thaat: str = "Bilawal") -> dict:
     del root, thaat  # ROSVOT predicts absolute MIDI pitches; labels are applied upstream.
     stem = _shared_stem(audio_path)
     with tempfile.TemporaryDirectory(prefix="sargam_rosvot_") as td:
-        npy_path = _run_rosvot(stem, Path(td))
+        npy_path, midi_path = _run_rosvot(stem, Path(td))
         result = np.load(npy_path, allow_pickle=True).item()
+        # Read the MIDI while the temporary ROSVOT output directory still exists.
+        midi_events = _read_midi_events(midi_path) if midi_path else []
 
     pitches = result.get("pitches", [])
     durations = result.get("note_durs", [])
     melody = []
-    cursor = 0.0
-    for raw_midi, raw_dur in zip(pitches, durations):
-        midi = int(raw_midi)
-        dur = float(raw_dur)
-        if midi <= 0 or dur <= 0:
-            cursor += max(0.0, dur)
-            continue
-        melody.append({
-            "start": round(cursor, 4),
-            "end": round(cursor + dur, 4),
-            "note": _note_name(midi),
-            "pitch_class": _note_name(midi)[:-1],
-            "octave": midi // 12 - 1,
-            "midi": midi,
-            "velocity": 0.7,
-            "pitch_confidence": 1.0,
-            "voicing_confidence": 1.0,
-            "source_model": "rosvot",
-            "render_role": "attack",
-        })
-        cursor += dur
+    if midi_events:
+        # MIDI preserves ROSVOT's true note intervals and silent gaps.
+        for event in midi_events:
+            midi = event["midi"]
+            note = _note_name(midi)
+            melody.append({
+                "start": event["start"],
+                "end": event["end"],
+                "note": note,
+                "pitch_class": note[:-1],
+                "octave": midi // 12 - 1,
+                "midi": midi,
+                "velocity": event["velocity"],
+                "pitch_confidence": 1.0,
+                "voicing_confidence": 1.0,
+                "source_model": "rosvot",
+                "timing_source": "rosvot_midi",
+                "retrigger": event.get("retrigger"),
+                "articulation": event.get("articulation"),
+                "render_role": "attack",
+            })
+    else:
+        # Compatibility fallback for installations that cannot write/read MIDI.
+        # This is explicitly marked because duration-only output cannot preserve
+        # ROSVOT rests or absolute onsets.
+        cursor = 0.0
+        for raw_midi, raw_dur in zip(pitches, durations):
+            midi = int(raw_midi)
+            dur = float(raw_dur)
+            if midi <= 0 or dur <= 0:
+                cursor += max(0.0, dur)
+                continue
+            note = _note_name(midi)
+            melody.append({
+                "start": round(cursor, 4),
+                "end": round(cursor + dur, 4),
+                "note": note,
+                "pitch_class": note[:-1],
+                "octave": midi // 12 - 1,
+                "midi": midi,
+                "velocity": 0.7,
+                "pitch_confidence": 1.0,
+                "voicing_confidence": 1.0,
+                "source_model": "rosvot",
+                "timing_source": "duration_fallback",
+                "render_role": "attack",
+            })
+            cursor += dur
 
     tempo, beats, duration = _tempo_and_beats(audio_path)
     return {

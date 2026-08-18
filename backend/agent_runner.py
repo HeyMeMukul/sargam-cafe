@@ -621,7 +621,7 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
                 entry[f] = seg[f]
         # preserve reviewer metadata + raw evidence (audit trail) through merge
         for f in ('review_flags', 'review_reason', 'review_confidence',
-                  'source_model', 'render_role', 'model_threshold',
+                  'source_model', 'render_role', 'model_threshold', 'timing_source',
                   'out_of_scale_candidate', 'octave_error_candidate',
                   'raw_midi_float', 'cents_deviation', 'pitch_confidence',
                   'voicing_confidence', 'onset_confidence', 'offset_confidence',

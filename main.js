@@ -189,7 +189,7 @@ window.agentPlayNote = (note, duration = '4n', velocity = 0.8) => {
   if (!keyElements[key]) return;
   // Preserve the lower dynamic range: a 0.2 floor makes quiet left-hand
   // accompaniment as loud as soft melody notes and defeats prominence.
-  const v = Math.max(0.04, Math.min(1, velocity || 0.8));
+  const v = Math.max(0.015, Math.min(1, velocity || 0.8));
   const id = ++voiceCounter;
   const durMs = typeof duration === 'number' ? Math.max(40, duration * 1000) : 500;
   synth.triggerAttackRelease(key, duration, Tone.now(), v);
@@ -576,10 +576,19 @@ function buildPedalPlan(plan, tempo) {
 }
 
 // Pre-compute the plan whenever transcription is ready.
-function refreshPerformancePlan() {
+function refreshPerformancePlan({ restart = false } = {}) {
   if (!transcriptionData) return;
   performancePlan = buildPerformancePlan(transcriptionData.melody.melody || [], transcriptionData.tempo || 120);
   pedalPlan = buildPedalPlan(performancePlan, transcriptionData.tempo || 120);
+  // Slider input updates the plan continuously; the committed change restarts
+  // the active renderer once, so the user can hear the new articulation without
+  // creating duplicate timers or stacking voices.
+  if (restart && playNotationBtn?.classList.contains('active')) {
+    playNotationBtn.click();
+    queueMicrotask(() => {
+      if (!playNotationBtn.classList.contains('active')) playNotationBtn.click();
+    });
+  }
 }
 let performancePlan = [];
 let pedalPlan = [];
@@ -725,8 +734,12 @@ function playNotation(data, opts = {}) {
     chords.forEach(c => {
       const when = c.start;
       const dur = Math.max(0.5, c.end - c.start);
+      const confidence = Math.max(0, Math.min(1, Number(c.confidence ?? 1)));
+      if (confidence < 0.3) return;
+      const baseVel = Math.max(0.025, 0.22 - (HT_STATE.prominence / 30) * 0.17);
+      const chordVel = baseVel * (0.45 + 0.55 * confidence);
       notationTimers.push(setTimeout(() => {
-        (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, Math.max(0.04, 0.22 - (HT_STATE.prominence / 30) * 0.17)));
+        (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, chordVel));
       }, when * 1000));
     });
   }
@@ -738,7 +751,8 @@ function playNotation(data, opts = {}) {
     plan = melody.map(seg => ({
       note: seg.note, performanceStart: seg.start, duration: seg.end - seg.start,
       velocity: seg.velocity || 0.8, ornament: seg.ornament, glide_to: seg.glide_to,
-      trill: seg.trill, sustain: seg.sustain,
+      trill: seg.trill, sustain: seg.sustain, retrigger: seg.retrigger,
+      articulation: seg.articulation,
     }));
   }
   let t = 0;
@@ -747,7 +761,9 @@ function playNotation(data, opts = {}) {
     t += Math.max(0, p.performanceStart - prev);
     const seg = {
       note: p.note, ornament: p.ornament, glide_to: p.glide_to, trill: p.trill,
-      graceNote: p.graceNote, graceDuration: p.graceDuration, render: p.render,
+      graceNote: p.graceNote, graceDuration: p.graceDuration,
+      retrigger: p.retrigger, articulation: p.sourceArticulation,
+      render: p.render,
     };
     playOrnamentedNote(seg, t, p.duration, p.velocity);
     t += p.duration;
@@ -793,21 +809,27 @@ function setupHumanTouch() {
   htModeBtns.forEach(b => b.onclick = () => {
     htModeBtns.forEach(x => x.classList.toggle('active', x === b));
     HT_STATE.mode = b.id === 'ht-songlike' ? 'songlike' : 'faithful';
-    refreshPerformancePlan();
+    refreshPerformancePlan({ restart: true });
   });
-  const bind = (el, key) => el.oninput = () => {
-    HT_STATE[key] = parseFloat(el.value);
-    // update the live value label next to the slider
-    const val = el.nextElementSibling;
-    if (val && val.classList.contains('ht-value')) val.textContent = el.value;
-    refreshPerformancePlan();
+  const bind = (el, key) => {
+    el.oninput = () => {
+      HT_STATE[key] = parseFloat(el.value);
+      // update the live value label next to the slider
+      const val = el.nextElementSibling;
+      if (val && val.classList.contains('ht-value')) val.textContent = el.value;
+      refreshPerformancePlan();
+    };
+    el.onchange = () => refreshPerformancePlan({ restart: true });
   };
   bind(htExpression, 'expression');
   bind(htRubato, 'rubato');
   bind(htBreath, 'breath');
   bind(htPedal, 'pedal');
   bind(htProminence, 'prominence');
-  htSeed.onchange = () => { HT_STATE.seed = parseInt(htSeed.value) || 0; refreshPerformancePlan(); };
+  htSeed.onchange = () => {
+    HT_STATE.seed = parseInt(htSeed.value) || 0;
+    refreshPerformancePlan({ restart: true });
+  };
 
   // Preview phrase: play the first phrase of the current performance plan so
   // the user hears the Human Touch settings immediately.
@@ -820,10 +842,12 @@ function setupHumanTouch() {
     const origin = phrase.length ? phrase[0].performanceStart : 0;
     phrase.forEach(p => {
       if (!p.note || p.note === '-') return;
-      const timer = setTimeout(() => {
-        window.agentPlayNote(p.note, p.duration, p.velocity);
-      }, Math.max(0, (p.performanceStart - origin) * 1000));
-      notationTimers.push(timer);
+      playOrnamentedNote(
+        p,
+        Math.max(0, (p.performanceStart - origin)),
+        p.duration,
+        p.velocity,
+      );
     });
   };
 }
@@ -1008,7 +1032,12 @@ function renderTranscription(data) {
         lastChordIndex = ci;
         const c = ch[ci];
         const dur = Math.max(0.5, c.end - c.start);
-        (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, Math.max(0.04, 0.22 - (HT_STATE.prominence / 30) * 0.17)));
+        const confidence = Math.max(0, Math.min(1, Number(c.confidence ?? 1)));
+        if (confidence >= 0.3) {
+          const baseVel = Math.max(0.025, 0.22 - (HT_STATE.prominence / 30) * 0.17);
+          const chordVel = baseVel * (0.45 + 0.55 * confidence);
+          (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, chordVel));
+        }
       }
       if (ci === -1 && t > 0) lastChordIndex = -1; // outside all chords -> reset
     }
@@ -1079,7 +1108,10 @@ function renderTranscription(data) {
           if (t >= c.start) {
             chordTriggered = i;
             const dur = Math.max(0.5, c.end - c.start);
-            const vel = Math.max(0.04, 0.22 - (HT_STATE.prominence / 30) * 0.17);
+            const confidence = Math.max(0, Math.min(1, Number(c.confidence ?? 1)));
+            if (confidence < 0.3) continue;
+            const baseVel = Math.max(0.025, 0.22 - (HT_STATE.prominence / 30) * 0.17);
+            const vel = baseVel * (0.45 + 0.55 * confidence);
             (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, vel));
           } else break;
         }
@@ -1225,7 +1257,7 @@ audioUpload.addEventListener('change', async function(e) {
     layerChordsBtn.disabled = true;
     layerMelodyBtn.disabled = true;
     layerSongBtn.disabled = true;
-    layerChordsBtn.classList.add('active');
+    layerChordsBtn.classList.remove('active');
     layerMelodyBtn.classList.add('active');
     layerSongBtn.classList.add('active');
     stopNotationPlayback();
@@ -1360,7 +1392,7 @@ simBtn.addEventListener('click', () => {
     if (!synth || !synth.loaded) return;
     const key = pianoNoteName(note);
     if (!keyElements[key]) return;
-    const v = Math.max(0.04, Math.min(1, vel || 0.8));
+    const v = Math.max(0.015, Math.min(1, vel || 0.8));
     synth.triggerAttackRelease(key, Math.max(0.05, dur), Tone.now(), v);
     keyElements[key].classList.add('active');
     setTimeout(() => {

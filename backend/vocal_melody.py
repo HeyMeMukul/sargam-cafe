@@ -27,9 +27,10 @@ Usage:
     python vocal_melody.py <audio_filepath> <root_note> [--cache-dir DIR]
 """
 import argparse
+import hashlib
 import json
+import math
 import os
-import sys
 import tempfile
 import warnings
 
@@ -175,7 +176,15 @@ def separate_vocals(audio_filepath: str):
     from demucs.apply import apply_model
     from demucs.audio import AudioFile, save_audio
 
-    base = os.path.splitext(os.path.basename(audio_filepath))[0]
+    # Cache by content, not basename: repeated uploads may share a filename
+    # while containing different songs. A content key prevents cross-track
+    # stem reuse and makes cache behavior reproducible.
+    digest = hashlib.sha256()
+    with open(audio_filepath, "rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    base_name = os.path.splitext(os.path.basename(audio_filepath))[0]
+    base = f"{base_name}-{digest.hexdigest()[:16]}"
     cached = os.path.join(CACHE_DIR, base, "htdemucs", "vocals.wav")
     if os.path.exists(cached):
         return cached
