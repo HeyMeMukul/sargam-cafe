@@ -1,0 +1,266 @@
+{
+  "title": "Music Theory Engine (REVISED)",
+  "version": "2.0",
+  "revision_note": "Useful thaat/sargam vocabulary. Now serves as a LABELING vocabulary with ten thaats, raga limitations, a chromatic-note policy, and separate theoretical spelling vs piano-key rendering. Removed unrelated flute-transposition guidance.",
+  "purpose": "Provide thaat intervals, western equivalents, and sargam vocabulary for LABELING and candidate generation \u2014 never for hard filtering notes into a scale.",
+  "usage_policy": {
+    "labeling_only": "Thaats and scales are for LABELING and generating scale candidates, NOT for identifying ragas or for hard-filtering observed pitches.",
+    "chromatic_notes": "Genuine chromatic, borrowed, or passing notes outside the thaat are musically valid and must be preserved. Show a scale-relative (sargam) label while retaining the observed chromatic pitch.",
+    "spelling_vs_key": "Theoretical scale spelling (e.g. E# for the 7th of F# major) is separate from the piano key actually played (E# is rendered as F). Keep both correct."
+  },
+  "thaats": {
+    "Bilawal": {
+      "western_equivalent": "Major Scale (Ionian)",
+      "mood": "Happy, Bright",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "sargam": [
+        "Sa",
+        "Re",
+        "Ga",
+        "Ma",
+        "Pa",
+        "Dha",
+        "Ni"
+      ]
+    },
+    "Khamaj": {
+      "western_equivalent": "Mixolydian Mode",
+      "mood": "Romantic, Light",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10
+      ],
+      "sargam": [
+        "Sa",
+        "Re",
+        "Ga",
+        "Ma",
+        "Pa",
+        "Dha",
+        "ni"
+      ]
+    },
+    "Kafi": {
+      "western_equivalent": "Dorian Mode",
+      "mood": "Folk, Spring",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10
+      ],
+      "sargam": [
+        "Sa",
+        "Re",
+        "ga",
+        "Ma",
+        "Pa",
+        "Dha",
+        "ni"
+      ]
+    },
+    "Asavari": {
+      "western_equivalent": "Natural Minor (Aeolian)",
+      "mood": "Melancholy, Devotion",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "sargam": [
+        "Sa",
+        "Re",
+        "ga",
+        "Ma",
+        "Pa",
+        "dha",
+        "ni"
+      ]
+    },
+    "Bhairavi": {
+      "western_equivalent": "Phrygian Mode",
+      "mood": "Sad, Compassionate",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "sargam": [
+        "Sa",
+        "re",
+        "ga",
+        "Ma",
+        "Pa",
+        "dha",
+        "ni"
+      ]
+    },
+    "Bhairav": {
+      "western_equivalent": "Double Harmonic Major",
+      "mood": "Morning, Peaceful",
+      "intervals_semitones": [
+        0,
+        1,
+        4,
+        5,
+        7,
+        8,
+        11
+      ],
+      "sargam": [
+        "Sa",
+        "re",
+        "Ga",
+        "Ma",
+        "Pa",
+        "dha",
+        "Ni"
+      ]
+    },
+    "Kalyan": {
+      "western_equivalent": "Lydian Mode",
+      "mood": "Evening, Grand",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "sargam": [
+        "Sa",
+        "Re",
+        "Ga",
+        "ma",
+        "Pa",
+        "Dha",
+        "Ni"
+      ]
+    },
+    "Marwa": {
+      "western_equivalent": "No exact standard western equivalent",
+      "mood": "Sunset, Uneasy",
+      "intervals_semitones": [
+        0,
+        1,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "sargam": [
+        "Sa",
+        "re",
+        "Ga",
+        "ma",
+        "Pa",
+        "Dha",
+        "Ni"
+      ]
+    },
+    "Poorvi": {
+      "western_equivalent": "Poorvi",
+      "mood": "Dusk, Serious",
+      "intervals_semitones": [
+        0,
+        1,
+        4,
+        6,
+        7,
+        8,
+        11
+      ],
+      "sargam": [
+        "Sa",
+        "re",
+        "Ga",
+        "ma",
+        "Pa",
+        "dha",
+        "Ni"
+      ]
+    },
+    "Todi": {
+      "western_equivalent": "Todi",
+      "mood": "Sorrowful, Intense",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        6,
+        7,
+        8,
+        11
+      ],
+      "sargam": [
+        "Sa",
+        "re",
+        "ga",
+        "ma",
+        "Pa",
+        "dha",
+        "Ni"
+      ]
+    }
+  },
+  "note_mapping": {
+    "chromatic_scale": [
+      "C",
+      "C#",
+      "D",
+      "D#",
+      "E",
+      "F",
+      "F#",
+      "G",
+      "G#",
+      "A",
+      "A#",
+      "B"
+    ],
+    "sargam_names": {
+      "Sa": "Tonic",
+      "re": "Minor 2nd",
+      "Re": "Major 2nd",
+      "ga": "Minor 3rd",
+      "Ga": "Major 3rd",
+      "Ma": "Perfect 4th",
+      "ma": "Tivra (Sharp) 4th",
+      "Pa": "Perfect 5th",
+      "dha": "Minor 6th",
+      "Dha": "Major 6th",
+      "ni": "Minor 7th",
+      "Ni": "Major 7th"
+    }
+  },
+  "raga_limitations": {
+    "note": "A thaat is a scale classification, not a complete raga. Raga identification requires melodic phrase analysis (aaroh-avroh, vadi-samvadi, characteristic phrases), which is beyond the scope of this project's scale labeling."
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "sargamking",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^8.2.0"
+  },
+  "dependencies": {
+    "@tonejs/piano": "^0.2.1",
+    "tone": "^15.1.22",
+    "webmidi": "^2.5.1"
+  }
+}

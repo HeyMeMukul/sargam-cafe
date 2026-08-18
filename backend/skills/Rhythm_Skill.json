@@ -1,0 +1,28 @@
+{
+  "title": "Rhythm & Micro-Timing Skill (REVISED)",
+  "version": "2.0",
+  "revision_note": "Now separates raw timing, quantized views, articulation evidence, rests, and look-ahead audio scheduling. Articulation rules are no longer broad deletion/snapping rules.",
+  "purpose": "Make the melody sound human by preserving rubato, groove, phrasing and rests \u2014 with an explicit scheduling contract so the browser plays true durations.",
+  "core_principles": [
+    "Humans do not sing exactly on the grid. Preserve micro-timing.",
+    "A melody with perfect grid timing sounds mechanical.",
+    "The expressive identity of a song lives in micro-timing, phrasing, and dynamic shape."
+  ],
+  "rubato": {
+    "definition": "Slight tasteful tempo deviation for expression.",
+    "action": "Keep RAW onset times. A 20-50ms offset from the beat is musical, not an error. Do not re-quantize."
+  },
+  "phrasing": {
+    "definition": "Grouping notes into musical sentences with a natural breath between phrases.",
+    "action": "Preserve rests. Shape velocities (swell toward phrase peak). A real gap = rest; do not fill it."
+  },
+  "articulation": {
+    "legato": "Connected, overlapping notes when close in time with no breath.",
+    "staccato": "Short detached notes for light passages.",
+    "action": "Detect gap between consecutive notes: small gap -> legato (overlap); large gap -> rest. This is RENDERING, not a license to delete notes."
+  },
+  "scheduling_contract": {
+    "rule": "Playback MUST schedule each note with its TRUE duration and absolute start time, not a fixed duration. Use a look-ahead Web Audio / Tone.js scheduler. Do not rely on HTML timeupdate for triggering fast notes.",
+    "note_off": "Issue explicit note-off or use triggerAttackRelease with the true duration so holds, rests and staccato are faithful."
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "title": "Pitch Skill (REVISED)",
+  "version": "2.0",
+  "revision_note": "Previously assumed octave jumps were errors too readily. Now requires candidate confidence, voicing evidence, duration, and continuity before correction. Preserves raw MIDI/cents and scale alternatives.",
+  "purpose": "Understand pitch measurement, read continuous pitch curves, and keep the raw evidence so corrections are reversible and auditable.",
+  "representations": {
+    "midi": "Integer 0-127. MIDI 60 = Middle C (C4). Each +1 = one semitone up.",
+    "note_name": "Pitch class + octave, e.g. C4, F#3. Octave 4 = middle octave.",
+    "frequency_hz": "MIDI to Hz: f = 440 * 2^((midi-69)/12). Hz to MIDI: midi = 69 + 12*log2(f/440).",
+    "cents": "100 cents = 1 semitone. Raw pitch should be stored as a float MIDI value plus a cents deviation, NOT just a rounded integer."
+  },
+  "midi_to_octave_rule": {
+    "formula": "midi // 12 - 1 gives the octave; midi % 12 gives the pitch class (C=0, ... B=11).",
+    "example": "MIDI 68 -> octave 4, pitch class 8 (G#) -> G#4."
+  },
+  "pitch_curve_reading": {
+    "definition": "A pitch tracker (CREPE, pYIN) returns f0 over time; convert each frame to a continuous MIDI value.",
+    "stable_note": "A horizontal stretch = one held note.",
+    "glide_meend": "A continuous diagonal slope between stable pitches = meend/portamento.",
+    "vibrato_gamak": "A periodic wobble around a stable pitch = vibrato or gamak.",
+    "octave_error": "A jump of ~+/-12 semitones is a POSSIBLE octave error \u2014 confirm with confidence + continuity before collapsing. Keep the raw MIDI either way."
+  },
+  "confidence_and_alternatives": {
+    "rule": "Store, per event: raw_midi_float, cents_deviation, pitch_confidence, voicing_confidence, and the nearest chromatic MIDI. Do NOT overwrite raw pitch with a hard scale quantization. Present both a chromatic view and a scale-relative (sargam) label.",
+    "octave_alternatives": "When pitch confidence is low, keep the octave alternative rather than guessing."
+  },
+  "octave_stability": {
+    "rule": "Do NOT collapse every octave difference. Only correct when both neighbours are near, the note is isolated and brief, voicing confidence is low, and continuity strongly supports it. Otherwise preserve."
+  }
+}

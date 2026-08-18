@@ -1,0 +1,173 @@
+{
+  "title": "Scale Identification Skill (REVISED)",
+  "version": "2.0",
+  "revision_note": "Contains good warnings about tonic ambiguity and passing tones. Now explicitly treats tonic, mode, thaat, and local modulation as PROBABILISTIC context and PROHIBITS unconditional scale-fit correction.",
+  "purpose": "Determine the key/scale/thaat as a PROBABILISTIC prior for labeling, never as a hard filter that rewrites observed pitches.",
+  "method": [
+    "1. Estimate the TONIC (root / Sa) \u2014 the note where phrases resolve and rest. Use evidence, not just frequency.",
+    "2. Normalize observed notes to pitch classes.",
+    "3. Read the interval pattern relative to the tonic.",
+    "4. Match against known scale formulas to name the scale/mode.",
+    "5. Map to a Hindustani thaat for LABELING."
+  ],
+  "interval_to_sargam": {
+    "0": "Sa (tonic)",
+    "1": "re (komol Re)",
+    "2": "Re (shuddh Re)",
+    "3": "ga (komol Ga)",
+    "4": "Ga (shuddh Ga)",
+    "5": "Ma (shuddh Ma)",
+    "6": "ma (tivra Ma)",
+    "7": "Pa (perfect 5th)",
+    "8": "dha (komol Dha)",
+    "9": "Dha (shuddh Dha)",
+    "10": "ni (komol Ni)",
+    "11": "Ni (shuddh Ni)"
+  },
+  "thaat_lookup": {
+    "Bilawal": {
+      "interval_pattern": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "western": "Major (Ionian)",
+      "mood": "Happy, bright"
+    },
+    "Khamaj": {
+      "interval_pattern": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10
+      ],
+      "western": "Mixolydian",
+      "mood": "Romantic, light"
+    },
+    "Kafi": {
+      "interval_pattern": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10
+      ],
+      "western": "Dorian",
+      "mood": "Folk, spring, romantic"
+    },
+    "Asavari": {
+      "interval_pattern": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "western": "Natural Minor (Aeolian)",
+      "mood": "Melancholy, devotional"
+    },
+    "Bhairavi": {
+      "interval_pattern": [
+        0,
+        1,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "western": "Phrygian",
+      "mood": "Sad, compassionate"
+    },
+    "Bhairav": {
+      "interval_pattern": [
+        0,
+        1,
+        4,
+        5,
+        7,
+        8,
+        11
+      ],
+      "western": "Double Harmonic Major",
+      "mood": "Morning, peaceful"
+    },
+    "Kalyan": {
+      "interval_pattern": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "western": "Lydian",
+      "mood": "Evening, grand"
+    },
+    "Marwa": {
+      "interval_pattern": [
+        0,
+        1,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "western": "Marwa",
+      "mood": "Sunset, uneasy"
+    },
+    "Poorvi": {
+      "interval_pattern": [
+        0,
+        1,
+        4,
+        6,
+        7,
+        8,
+        11
+      ],
+      "western": "Poorvi",
+      "mood": "Dusk, serious"
+    },
+    "Todi": {
+      "interval_pattern": [
+        0,
+        1,
+        3,
+        6,
+        7,
+        8,
+        11
+      ],
+      "western": "Todi",
+      "mood": "Sorrowful, intense"
+    }
+  },
+  "probabilistic_context": {
+    "rule": "The tonic, mode, thaat, and possible local modulations are PROBABILISTIC hypotheses. Do NOT use the global thaat as proof that every observed note must belong to one seven-note set.",
+    "local_modulation": "A song may modulate or borrow notes. The scale is a labeling context, not a hard pitch filter.",
+    "chromatic_notes": "Genuine chromatic/passing/borrowed tones must be PRESERVED, not forcibly moved into the scale. Present a scale-relative (sargam) label while retaining the observed chromatic pitch."
+  },
+  "pitfalls": [
+    "The tonic is NOT always the most frequent note \u2014 it is where phrases RESOLVE.",
+    "Relative keys share pitch classes \u2014 use where the melody rests to pick the true tonic.",
+    "Passing tones outside the scale are valid \u2014 do not overfit to one out-of-scale note."
+  ],
+  "prohibitions": [
+    "PROHIBITED: unconditional scale-fit correction that moves an observed pitch into the thaat.",
+    "PROHIBITED: treating the confidence-1.0 key label as certainty."
+  ]
+}

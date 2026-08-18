@@ -1,0 +1,64 @@
+{
+  "title": "Music Flow & Rhythm Knowledge Base (REVISED)",
+  "version": "2.0",
+  "revision_note": "Revised per accuracy review. Previously treated off-grid starts, short durations, and stepwise contour as near-deletion rules. Now these are SOFT PRIORS, never grounds for deletion. Audio evidence (pitch confidence, voicing, onset/offset) always comes first.",
+  "purpose": "Teach the agents how a melody MOVES in time \u2014 tempo, beat, rhythm, phrasing \u2014 as a set of probabilistic expectations, NOT hard rules that delete notes.",
+  "tempo": {
+    "definition": "Tempo is the speed of the beat, measured in beats per minute (BPM). Every song has a steady underlying pulse; the melody rides on top of it.",
+    "bpm_ranges": {
+      "slow_ballad": "60-80 BPM \u2014 long held notes, spacious phrasing",
+      "medium": "80-110 BPM \u2014 conversational vocal pace",
+      "upbeat": "110-140 BPM \u2014 lively, more notes per phrase",
+      "fast": "140+ BPM \u2014 rapid, energetic delivery"
+    },
+    "how_to_use": "One beat = 60/BPM seconds. Use BPM to JUDGE whether a duration is plausible, never to delete a note that has strong onset/pitch evidence."
+  },
+  "beat_and_rhythm": {
+    "definition": "Rhythm is the pattern of note durations and rests against the steady beat. Many onsets land near a beat, but syncopation, pickups, swing, triplets and rubato are musically valid off-grid placements.",
+    "subdivisions": [
+      "whole",
+      "half",
+      "quarter",
+      "eighth",
+      "sixteenth",
+      "triplet"
+    ],
+    "rule": "The beat grid is a HYPOTHESIS, not ground truth. A note starting away from the grid is NOT automatically a glitch. Only suspect it if it also lacks pitch/onset confidence AND is isolated. Prefer snapping to flagging rather than deleting."
+  },
+  "phrasing": {
+    "definition": "A phrase is a musical sentence. Singers breathe between phrases, producing natural gaps (rests).",
+    "rule": "Group notes into phrases separated by rests. A short isolated note is NOT automatically noise \u2014 it may be a genuine pickup, grace note, or repeated syllable. Preserve it unless pitch/voicing evidence is low AND it is extremely short (below the eighth-note threshold) AND its neighbours support deletion."
+  },
+  "melodic_contour": {
+    "definition": "Melodies often move stepwise, but wide expressive leaps (4ths, 5ths, octaves) are normal and musical.",
+    "rule": "Stepwise motion is a PRIOR (expected), not a deletion rule. A wide leap is NOT an error by itself. Only flag a leap as an octave error when BOTH neighbours are close together AND the note is an exact +/-12 semitone displacement AND continuity evidence supports collapsing it."
+  },
+  "octave_stability": {
+    "definition": "The vocal line usually stays within a comfortable register, but octave leaps are a genuine expressive device.",
+    "rule": "Do NOT collapse every octave difference. Only correct an octave when there is strong evidence (both neighbours near, the note is isolated and brief, and voicing confidence is low). Always keep the raw MIDI so the correction is reversible."
+  },
+  "note_duration_logic": {
+    "rule": "An eighth-note at the detected BPM is a reasonable EXPECTED minimum for a sustained syllable, but fast runs, grace notes, melisma and ornamentation legitimately contain much shorter notes. NEVER delete a short note purely for being short \u2014 require supporting evidence (low confidence, isolation, no onset)."
+  },
+  "confidence_hierarchy": {
+    "rule": "Audio-derived evidence outranks musical heuristics. Order: (1) pitch confidence & voicing, (2) onset/offset evidence, (3) duration, (4) scale membership, (5) contour/timing priors. A heuristic may only flag; it may not override clear audio evidence to delete or move a note.",
+    "event_contract": {
+      "start": "onset time in seconds",
+      "end": "offset time in seconds",
+      "duration": "end - start in seconds",
+      "midi": "quantized chromatic MIDI",
+      "raw_midi_float": "continuous pitch estimate in MIDI cents-space",
+      "cents_deviation": "deviation of raw pitch from the chromatic MIDI in cents",
+      "pitch_confidence": "0-1 confidence in the pitch estimate",
+      "voicing_confidence": "0-1 confidence that the frame is voiced (singing)",
+      "onset_confidence": "0-1 confidence in the onset time",
+      "offset_confidence": "0-1 confidence in the offset time",
+      "velocity": "0-1 dynamics"
+    }
+  },
+  "prohibitions": [
+    "Do NOT delete a note merely because it is short, off-grid, isolated, chromatic, or part of a large leap.",
+    "Do NOT snap a note onto a beat unless the onset is clearly wrong AND confidence is low.",
+    "Do NOT treat the thaat as proof that every note must be one of seven scale degrees."
+  ]
+}

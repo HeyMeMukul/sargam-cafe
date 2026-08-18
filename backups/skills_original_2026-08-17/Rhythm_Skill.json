@@ -1,0 +1,27 @@
+{
+  "title": "Rhythm & Micro-Timing Skill",
+  "purpose": "Make the melody sound human by understanding rubato, groove, and phrasing — NOT robotic grid-quantization.",
+  "core_principles": [
+    "Humans do not sing exactly on the grid. Every real performance has tiny delays and hurries (micro-timing).",
+    "A melody with perfect grid timing sounds mechanical and lifeless.",
+    "The expressive identity of a song lives in its micro-timing, phrasing and dynamic shape — preserve these."
+  ],
+  "rubato": {
+    "definition": "Slight, tasteful deviations in tempo for expressive effect — holding a note a touch longer or pushing forward through a phrase.",
+    "action": "Keep the RAW onset times from the pitch/onset analysis. Do NOT aggressively re-quantize to a strict grid. A 20-50ms offset from the beat is musical, not an error."
+  },
+  "phrasing": {
+    "definition": "Grouping notes into musical sentences, with a natural breath (short rest) between phrases.",
+    "action": "Notes within a phrase connect smoothly (legato). A real gap between phrases = a breath/rest. Preserve these gaps.",
+    "dynamic_shape": "Phrases usually swell slightly toward their peak then relax — shape velocities accordingly (crescendo into the climax, decrescendo out)."
+  },
+  "groove": {
+    "definition": "The rhythmic feel created by consistent, subtle timing accents (e.g. slightly swinging the eighths).",
+    "note": "Detect the consistent offset pattern from the beat and preserve it for a natural groove."
+  },
+  "legato_vs_staccato": {
+    "legato": "Connected, overlapping notes (smooth). Use when notes are close in time with no breath.",
+    "staccato": "Short, detached notes. Use for light, punctuated passages.",
+    "action": "Detect the gap between consecutive notes: small gap -> legato (overlap); large gap -> rest."
+  }
+}

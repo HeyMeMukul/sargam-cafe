@@ -1,0 +1,40 @@
+{
+  "title": "Scale Identification Skill",
+  "purpose": "Given a set of notes (or a song's pitch-class histogram), determine the scale/key/mode and its Hindustani thaat equivalent.",
+  "method": [
+    "1. Identify the TONIC (root / Sa) first — the note the melody most often returns to and rests on. In Hindustani music this is Sa.",
+    "2. Normalize every observed note to a pitch class (C, C#, D, ... ignoring octave).",
+    "3. Sort the unique pitch classes relative to the tonic and read the interval pattern (in semitones from Sa).",
+    "4. Match that interval pattern against known scale formulas to name the scale/mode.",
+    "5. Convert to the Hindustani thaat using the thaat table below."
+  ],
+  "interval_to_sargam": {
+    "0": "Sa (tonic)",
+    "1": "re (komol Re / minor 2nd)",
+    "2": "Re (shuddh Re / major 2nd)",
+    "3": "ga (komol Ga / minor 3rd)",
+    "4": "Ga (shuddh Ga / major 3rd)",
+    "5": "Ma (shuddh Ma / perfect 4th)",
+    "6": "ma (tivra Ma / augmented 4th)",
+    "7": "Pa (perfect 5th)",
+    "8": "dha (komol Dha / minor 6th)",
+    "9": "Dha (shuddh Dha / major 6th)",
+    "10": "ni (komol Ni / minor 7th)",
+    "11": "Ni (shuddh Ni / major 7th)"
+  },
+  "thaat_lookup": {
+    "Bilawal": {"interval_pattern": [0, 2, 4, 5, 7, 9, 11], "western": "Major (Ionian)", "mood": "Happy, bright"},
+    "Khamaj": {"interval_pattern": [0, 2, 4, 5, 7, 9, 10], "western": "Mixolydian", "mood": "Romantic, light"},
+    "Kafi": {"interval_pattern": [0, 2, 3, 5, 7, 9, 10], "western": "Dorian", "mood": "Folk, spring, romantic"},
+    "Asavari": {"interval_pattern": [0, 2, 3, 5, 7, 8, 10], "western": "Natural Minor (Aeolian)", "mood": "Melancholy, devotional"},
+    "Bhairavi": {"interval_pattern": [0, 1, 3, 5, 7, 8, 10], "western": "Phrygian", "mood": "Sad, compassionate"},
+    "Bhairav": {"interval_pattern": [0, 1, 4, 5, 7, 8, 11], "western": "Double Harmonic Major", "mood": "Morning, peaceful"},
+    "Kalyan": {"interval_pattern": [0, 2, 4, 6, 7, 9, 11], "western": "Lydian", "mood": "Evening, grand"},
+    "Marwa": {"interval_pattern": [0, 1, 4, 6, 7, 9, 11], "western": "Marwa", "mood": "Sunset, uneasy"}
+  },
+  "pitfalls": [
+    "The tonic is NOT always the most frequent note — it is the note where phrases RESOLVE and rest.",
+    "Relative keys share the same pitch classes (e.g. F# Major and D# Natural Minor both have F# G# A# B C# D# E#). Use where the melody rests to pick the true tonic.",
+    "A song may use notes outside the strict scale as passing tones — do not overfit to a single out-of-scale note."
+  ]
+}

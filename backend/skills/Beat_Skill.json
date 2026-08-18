@@ -1,0 +1,35 @@
+{
+  "title": "Beat & Rhythm Skill (REVISED)",
+  "version": "2.0",
+  "revision_note": "Previously implied most notes lie on a beat and that an eighth-note is a minimum. Now beat grids are candidate hypotheses; syncopation, triplets, swing, pickups and rubato are explicitly preserved.",
+  "purpose": "Understand tempo, beats, and note durations so the grid is used as a PRIOR, never as a deletion or forced-snapping rule.",
+  "tempo": {
+    "definition": "Speed of the beat in BPM. One beat = 60/BPM seconds.",
+    "common": {
+      "60-80": "Slow ballad \u2014 long notes, spacious",
+      "80-110": "Medium \u2014 conversational vocal pace",
+      "110-140": "Upbeat \u2014 lively, more notes per phrase",
+      "140+": "Fast \u2014 rapid delivery"
+    }
+  },
+  "note_durations_at_bpm": {
+    "formula": "whole=4 beats, half=2, quarter=1, eighth=0.5, triplet=1/3, sixteenth=0.25 beats.",
+    "example_120_bpm": "beat=0.5s, half=1.0s, quarter=0.5s, eighth=0.25s, triplet=0.166s, sixteenth=0.125s.",
+    "use": "Compute the eighth/triplet/sixteenth durations to JUDGE durations \u2014 but short notes are legitimately present in runs, grace notes and ornamentation."
+  },
+  "beat_and_grid": {
+    "rule": "The beat grid is a HYPOTHESIS. Many onsets are near a beat/subdivision, but syncopation, pickups, swing and rubato are musically valid off-grid placements.",
+    "action": "Do NOT snap notes to the grid by default. Only adjust an onset when the onset confidence is low and the nearest grid point is strongly supported. Preserve genuine micro-timing/rubato."
+  },
+  "rhythmic_devices": {
+    "syncopation": "Accents on weak beats or off-beats \u2014 musically valid, do not remove.",
+    "pickup_notes": "Anacrusis notes before the downbeat \u2014 valid, do not delete.",
+    "triplets": "Three equal notes in the space of two \u2014 valid, preserve their timing.",
+    "swing": "Consistent subtle off-beat offset \u2014 preserve as groove.",
+    "rubato": "Expressive tempo flexibility \u2014 preserve."
+  },
+  "taal": {
+    "definition": "Hindustani rhythmic cycles: Teen Taal (16 beats), Keherwa (8), Dadra (6), Ek Taal (12), Jhaptaal (10).",
+    "note": "Tempo and phrase length may suggest a taal, but this is labeling only \u2014 it never justifies moving or deleting notes."
+  }
+}

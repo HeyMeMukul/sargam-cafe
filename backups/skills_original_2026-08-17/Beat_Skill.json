@@ -1,0 +1,26 @@
+{
+  "title": "Beat & Rhythm Skill",
+  "purpose": "Understand tempo, beats, note durations, and how the melody sits on the rhythmic grid.",
+  "tempo": {
+    "definition": "Speed of the beat in beats per minute (BPM). One beat = 60/BPM seconds.",
+    "common": {
+      "60-80": "Slow ballad — long notes, spacious",
+      "80-110": "Medium — conversational vocal pace",
+      "110-140": "Upbeat — lively, more notes per phrase",
+      "140+": "Fast — rapid delivery"
+    }
+  },
+  "note_durations_at_bpm": {
+    "formula": "whole=4 beats, half=2, quarter=1, eighth=0.5, sixteenth=0.25 beats.",
+    "example_120_bpm": "beat=0.5s, half=1.0s, quarter=0.5s, eighth=0.25s, sixteenth=0.125s.",
+    "use": "At a known BPM, compute the eighth-note duration and use it as the minimum plausible sung-note length."
+  },
+  "beat_and_grid": {
+    "rule": "Most melody note onsets land ON a beat or a simple subdivision (eighth/sixteenth). A note starting far from the grid is likely a transcription glitch.",
+    "action": "When in doubt about a stray onset, snap it to the nearest beat or eighth-note subdivision — but DO preserve genuine micro-timing/rubato (see Rhythm skill)."
+  },
+  "taal": {
+    "definition": "Hindustani rhythmic cycles: Teen Taal (16 beats), Keherwa (8), Dadra (6), Ek Taal (12), Jhaptaal (10).",
+    "note": "Given the tempo, the length of a phrase cycle in beats can suggest the taal."
+  }
+}

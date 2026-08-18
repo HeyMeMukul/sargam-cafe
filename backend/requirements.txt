@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+librosa
+numpy
+soundfile
+python-multipart
+scipy
+scikit-learn
+onnxruntime
+pretty-midi
+mido
+six
+importlib-resources
+resampy
+mir-eval
+basic-pitch

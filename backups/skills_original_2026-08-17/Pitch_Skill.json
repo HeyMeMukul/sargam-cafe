@@ -1,0 +1,25 @@
+{
+  "title": "Pitch Skill",
+  "purpose": "Understand how pitch is measured, how to read pitch curves, and how to convert between representations (MIDI, note name, frequency).",
+  "representations": {
+    "midi": "Integer 0-127. MIDI 60 = Middle C (C4). Each +1 = one semitone up.",
+    "note_name": "Pitch class + octave, e.g. C4, F#3, A#5. Octave 4 = middle octave.",
+    "frequency_hz": "MIDI to Hz: f = 440 * 2^((midi-69)/12). Hz to MIDI: midi = 69 + 12*log2(f/440).",
+    "cents": "100 cents = 1 semitone. Used to describe small deviations and glides."
+  },
+  "midi_to_octave_rule": {
+    "formula": "midi // 12 - 1 gives the octave; midi % 12 gives the pitch class (C=0, C#=1, ... B=11).",
+    "example": "MIDI 68 -> 68//12-1 = 4 (octave 4), 68%12 = 8 (G#) -> G#4."
+  },
+  "pitch_curve_reading": {
+    "definition": "A pitch tracker (e.g. CREPE, pYIN) returns the fundamental frequency (f0) over time. Convert each frame to MIDI to see the melody line.",
+    "stable_note": "A horizontal stretch of the f0 curve at one pitch = one held note.",
+    "glide_meend": "A continuous diagonal slope between two stable pitches = a meend/portamento (slide).",
+    "vibrato_gamak": "A rapid periodic wobble around a stable pitch = vibrato or gamak (oscillation).",
+    "octave_error": "If the curve jumps exactly +/-12 semitones and returns, that is an octave error — collapse to the correct register."
+  },
+  "octave_stability": {
+    "rule": "The human vocal line stays within about an octave-and-a-half. It does not bounce between octaves every other note.",
+    "action": "If adjacent notes alternate across an octave, correct to the surrounding register."
+  }
+}

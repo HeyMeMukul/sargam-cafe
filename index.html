@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sargam Cafe — AI Ear-Training & Transcription</title>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <!-- Grain overlay -->
+    <div class="grain pointer-events-none fixed inset-0 -z-10"></div>
+    <div class="gradient-bg fixed inset-0 -z-20"></div>
+
+    <div id="app">
+      <header>
+        <div class="header-content">
+          <h1>सरगम कैफ़े <span>Sargam Cafe</span></h1>
+          <p class="subtitle">AI Ear-Training for Musicians · Playing Live</p>
+        </div>
+        <div class="header-controls">
+          <label class="aesthetic-btn upload-btn">
+            Load Track
+            <input type="file" id="audio-upload" accept="audio/*" style="display: none;" />
+          </label>
+        </div>
+      </header>
+      
+      <main>
+        <div class="main-stage">
+          <section class="panel player-panel">
+            <div class="section-header">
+              <h2 class="section-title">01. Source Audio</h2>
+            </div>
+            <div class="custom-audio-player">
+              <audio id="audio-player"></audio>
+              <div class="player-controls">
+                <button id="play-pause-btn" class="icon-btn">
+                  <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" class="play-icon"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                </button>
+                <span id="current-time" class="time-display">0:00</span>
+                <div class="progress-container" id="progress-container">
+                  <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <span id="total-time" class="time-display">0:00</span>
+                <div class="volume-control">
+                  <svg viewBox="0 0 24 24" width="16" height="16" stroke="var(--brass)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                  <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1">
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel log-panel">
+            <div class="section-header">
+              <h2 class="section-title">02. Agent Telemetry</h2>
+              <button id="simulate-ai-btn" class="aesthetic-btn small" disabled>Start Agent</button>
+            </div>
+            <div id="ai-log" class="log-box">Waiting for audio track...</div>
+          </section>
+
+          <section class="panel piano-panel">
+            <div class="section-header">
+              <h2 class="section-title">04. Grand Piano Interface</h2>
+              <span id="loading-status" class="status-text">Piano samples loading...</span>
+            </div>
+            <div class="piano" id="piano-keyboard">
+              <!-- 5 octaves of keys generated dynamically -->
+            </div>
+          </section>
+        </div>
+
+        <aside class="panel transcription-panel" id="transcription-panel">
+          <div class="section-header">
+            <h2 class="section-title">03. Transcription</h2>
+            <div class="section-controls">
+              <span id="transcription-status" class="status-text">Waiting for agent</span>
+            </div>
+          </div>
+          <div id="transcription-summary" class="transcription-summary" hidden>
+            <div class="summary-grid">
+              <div class="summary-card">
+                <span class="summary-label">Sa (Root)</span>
+                <span id="summary-root" class="summary-value root-note">-</span>
+              </div>
+              <div class="summary-card">
+                <span class="summary-label">Thaat</span>
+                <span id="summary-thaat" class="summary-value">-</span>
+              </div>
+              <div class="summary-card">
+                <span class="summary-label">Western Scale</span>
+                <span id="summary-scale" class="summary-value">-</span>
+              </div>
+              <div class="summary-card">
+                <span class="summary-label">Tempo</span>
+                <span id="summary-tempo" class="summary-value">-</span>
+              </div>
+            </div>
+            <div id="sargam-strip" class="sargam-strip"></div>
+            <div class="live-sargam" id="live-sargam" hidden>
+              <span class="live-label">Now Playing</span>
+              <span id="live-note" class="live-note">-</span>
+              <span id="live-sargam-name" class="live-sargam-name">-</span>
+            </div>
+            <div class="section-controls playback-controls">
+              <button id="play-notation-btn" class="aesthetic-btn small" disabled>Play</button>
+              <div class="layer-toggles">
+                <button id="layer-chords" class="layer-btn active" disabled>Chords</button>
+                <button id="layer-melody" class="layer-btn active" disabled>Melody</button>
+                <button id="layer-song" class="layer-btn active" disabled>With Song</button>
+              </div>
+            </div>
+            <div id="human-touch" class="human-touch" hidden>
+              <div class="ht-header">
+                <span class="ht-title">Human Touch</span>
+                <div class="ht-mode">
+                  <button id="ht-faithful" class="ht-mode-btn active" title="Preserve measured timing/dynamics">Faithful</button>
+                  <button id="ht-songlike" class="ht-mode-btn" title="Phrase rubato + dynamic arcs + pedal">Song-like</button>
+                </div>
+              </div>
+              <div class="ht-controls">
+                <label class="ht-row"><span>Expression</span><input type="range" id="ht-expression" min="0" max="1.5" step="0.05" value="0.8"></label>
+                <label class="ht-row"><span>Rubato</span><input type="range" id="ht-rubato" min="0" max="1" step="0.05" value="0.5"></label>
+                <label class="ht-row"><span>Cadence breath</span><input type="range" id="ht-breath" min="0" max="0.3" step="0.01" value="0.12"></label>
+                <label class="ht-row"><span>Pedal</span><input type="range" id="ht-pedal" min="0" max="1" step="0.05" value="0.4"></label>
+                <label class="ht-row"><span>Melody prominence</span><input type="range" id="ht-prominence" min="0" max="30" step="1" value="12"></label>
+                <label class="ht-row"><span>Seed</span><input type="number" id="ht-seed" min="0" max="9999" value="42"></label>
+              </div>
+            </div>
+            <div id="midi-panel" class="midi-panel">
+              <div class="ht-header">
+                <span class="ht-title">MIDI Controller</span>
+                <button id="midi-enable" class="ht-mode-btn" title="Enable a physical MIDI keyboard (velocity/aftertouch/pedal)">Enable</button>
+              </div>
+              <div class="midi-status" id="midi-status">No MIDI device</div>
+              <div class="midi-diag" id="midi-diag">velocity: – &nbsp; aftertouch: – &nbsp; pedal: –</div>
+            </div>
+          </div>
+          <div id="piano-roll" class="piano-roll" hidden>
+            <div id="roll-track" class="roll-track"></div>
+            <div id="roll-cursor" class="roll-cursor"></div>
+          </div>
+        </aside>
+      </main>
+
+      <footer class="status-bar">
+        <div class="status-left">
+          <span class="status-dot" id="status-dot"></span>
+          <span id="session-status">Idle</span>
+        </div>
+        <div class="status-right">
+          <span class="cost-chip">model <b id="cost-model">—</b></span>
+          <span class="cost-chip">cost <b id="cost-value">$0.000000</b></span>
+          <span class="cost-chip">tokens <b id="cost-tokens">0</b></span>
+          <span class="cost-chip">requests <b id="cost-requests">0</b></span>
+        </div>
+      </footer>
+    </div>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,68 @@
+{
+  "title": "Piano & Ornamentation Skill (REVISED)",
+  "version": "2.0",
+  "revision_note": "Previously allowed simplistic fixed ornament substitutions. Now requires event-provided ornament trajectories, scale-aware neighbours, correct temporal ordering, and separation of duration from velocity with true note-off scheduling.",
+  "purpose": "Render a vocal melody expressively on the piano \u2014 dynamics, articulation, and ornaments \u2014 while preserving true durations and onset ordering.",
+  "piano_expression": {
+    "velocity": "Map RMS energy per note to MIDI velocity (1-127). Loud notes hit harder, soft notes gently.",
+    "legato": "Connect notes in a phrase by overlapping onsets slightly \u2014 smooth flowing line.",
+    "sustain_pedal": "Hold long notes so they ring naturally.",
+    "micro_timing": "Preserve rubato/groove; do not lock to a strict grid."
+  },
+  "duration_vs_velocity": {
+    "rule": "MIDI note-on velocity is SEPARATE from duration and release scheduling. Preserve BOTH explicitly: schedule each note with its true start and duration, and issue a real note-off / triggerAttackRelease(duration). A short note must be short; a long hold must be long."
+  },
+  "ornaments": {
+    "meend": {
+      "name": "Meend (portamento / glide)",
+      "definition": "A smooth continuous slide between two notes without articulating intermediate pitches.",
+      "piano_rendering": "A piano cannot bend pitch. Emulate with a FAST grace-note run in TEMPORAL ORDER: play the intermediate notes sequentially from the start toward the target, ending on the target. The target note must be scheduled AFTER the run, NOT simultaneously at full volume. Use low velocity on passing notes so the target stands out.",
+      "requirement": "Use the scale-aware neighbours from the detected scale and the actual source/target contour \u2014 do not hard-code a fixed chromatic run."
+    },
+    "gamak": {
+      "name": "Gamak (oscillation / shake)",
+      "definition": "Rapid deliberate oscillation between a note and adjacent note(s).",
+      "piano_rendering": "Render as a trill alternating the main note with its correct scale neighbour. Determine the neighbour from the detected scale/contour, NOT a fixed +2 semitones.",
+      "requirement": "Trill neighbours must be scale-aware and tied to the detected pitch contour."
+    },
+    "kan_swar": {
+      "name": "Kan-swar (grace note)",
+      "definition": "A very short grace note just before the main note, from above or below.",
+      "piano_rendering": "Play a tiny quiet passing note immediately before the main note attack. The grace note should be the appropriate neighbouring swara, NOT always a fixed -1 semitone.",
+      "requirement": "Pick the grace neighbour from the scale/contour."
+    },
+    "andolan": {
+      "name": "Andolan (slow oscillation)",
+      "definition": "A slow, subtle pitch oscillation used in Indian classical music.",
+      "note": "Distinguish from gamak (faster) and vibrato. Render carefully, only where the contour evidence supports it."
+    },
+    "vibrato": {
+      "name": "Vibrato",
+      "definition": "Subtle periodic pitch wavering on a sustained note.",
+      "piano_rendering": "Emulate with a very fast quiet trill or detuned second voice. Use sparingly."
+    },
+    "sustain": {
+      "name": "Long held note",
+      "definition": "A note held over several beats.",
+      "piano_rendering": "Hold for the TRUE duration with sustain; do not cut short and do not extend beyond it."
+    }
+  },
+  "rendering_priority": {
+    "1": "Correct pitch + TRUE duration + rhythm (the notes themselves)",
+    "2": "Dynamics (velocity)",
+    "3": "Legato + sustain",
+    "4": "Ornaments (meend/gamak/kan) \u2014 only where the pitch curve actually shows them",
+    "5": "Micro-timing \u2014 final human polish"
+  },
+  "prohibitions": [
+    "Do NOT trigger a meend target note simultaneously at full volume with the grace-note run.",
+    "Do NOT use a fixed +2-semitone trill or fixed -1-semitone kan; neighbours must be scale/contour aware.",
+    "Do NOT play every note with one fixed duration; preserve true durations with note-off.",
+    "Do NOT add ornaments where the pitch curve shows no glide/oscillation evidence."
+  ],
+  "warnings": [
+    "Ornaments must be TEMPO-CORRECT and temporally ordered.",
+    "Over-ornamentation destroys clarity \u2014 use only where evidence supports it.",
+    "Grace-note runs (meend) should be QUIET relative to the target note."
+  ]
+}

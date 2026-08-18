@@ -1,0 +1,2597 @@
+{
+  "description": "Complete scale knowledge: every major/minor/modal scale in all 12 keys, with formula and exact notes.",
+  "scales": {
+    "C Major": {
+      "root": "C",
+      "scale_type": "Major",
+      "formula": "W-W-H-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "A",
+        "B"
+      ],
+      "note_count": 7
+    },
+    "C Natural Minor": {
+      "root": "C",
+      "scale_type": "Natural Minor",
+      "formula": "W-H-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "C",
+        "D",
+        "D#",
+        "F",
+        "G",
+        "G#",
+        "A#"
+      ],
+      "note_count": 7
+    },
+    "C Harmonic Minor": {
+      "root": "C",
+      "scale_type": "Harmonic Minor",
+      "formula": "W-H-W-W-H-WH-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        11
+      ],
+      "notes": [
+        "C",
+        "D",
+        "D#",
+        "F",
+        "G",
+        "G#",
+        "B"
+      ],
+      "note_count": 7
+    },
+    "C Melodic Minor": {
+      "root": "C",
+      "scale_type": "Melodic Minor",
+      "formula": "W-H-W-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "C",
+        "D",
+        "D#",
+        "F",
+        "G",
+        "A",
+        "B"
+      ],
+      "note_count": 7
+    },
+    "C Dorian": {
+      "root": "C",
+      "scale_type": "Dorian",
+      "formula": "W-H-W-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "C",
+        "D",
+        "D#",
+        "F",
+        "G",
+        "A",
+        "A#"
+      ],
+      "note_count": 7
+    },
+    "C Phrygian": {
+      "root": "C",
+      "scale_type": "Phrygian",
+      "formula": "H-W-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "C",
+        "C#",
+        "D#",
+        "F",
+        "G",
+        "G#",
+        "A#"
+      ],
+      "note_count": 7
+    },
+    "C Lydian": {
+      "root": "C",
+      "scale_type": "Lydian",
+      "formula": "W-W-W-H-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "C",
+        "D",
+        "E",
+        "F#",
+        "G",
+        "A",
+        "B"
+      ],
+      "note_count": 7
+    },
+    "C Mixolydian": {
+      "root": "C",
+      "scale_type": "Mixolydian",
+      "formula": "W-W-H-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "A",
+        "A#"
+      ],
+      "note_count": 7
+    },
+    "C Locrian": {
+      "root": "C",
+      "scale_type": "Locrian",
+      "formula": "H-W-W-H-W-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        6,
+        8,
+        10
+      ],
+      "notes": [
+        "C",
+        "C#",
+        "D#",
+        "F",
+        "F#",
+        "G#",
+        "A#"
+      ],
+      "note_count": 7
+    },
+    "C# Major": {
+      "root": "C#",
+      "scale_type": "Major",
+      "formula": "W-W-H-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "C#",
+        "D#",
+        "F",
+        "F#",
+        "G#",
+        "A#",
+        "C"
+      ],
+      "note_count": 7
+    },
+    "C# Natural Minor": {
+      "root": "C#",
+      "scale_type": "Natural Minor",
+      "formula": "W-H-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "C#",
+        "D#",
+        "E",
+        "F#",
+        "G#",
+        "A",
+        "B"
+      ],
+      "note_count": 7
+    },
+    "C# Harmonic Minor": {
+      "root": "C#",
+      "scale_type": "Harmonic Minor",
+      "formula": "W-H-W-W-H-WH-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        11
+      ],
+      "notes": [
+        "C#",
+        "D#",
+        "E",
+        "F#",
+        "G#",
+        "A",
+        "C"
+      ],
+      "note_count": 7
+    },
+    "C# Melodic Minor": {
+      "root": "C#",
+      "scale_type": "Melodic Minor",
+      "formula": "W-H-W-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "C#",
+        "D#",
+        "E",
+        "F#",
+        "G#",
+        "A#",
+        "C"
+      ],
+      "note_count": 7
+    },
+    "C# Dorian": {
+      "root": "C#",
+      "scale_type": "Dorian",
+      "formula": "W-H-W-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "C#",
+        "D#",
+        "E",
+        "F#",
+        "G#",
+        "A#",
+        "B"
+      ],
+      "note_count": 7
+    },
+    "C# Phrygian": {
+      "root": "C#",
+      "scale_type": "Phrygian",
+      "formula": "H-W-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "C#",
+        "D",
+        "E",
+        "F#",
+        "G#",
+        "A",
+        "B"
+      ],
+      "note_count": 7
+    },
+    "C# Lydian": {
+      "root": "C#",
+      "scale_type": "Lydian",
+      "formula": "W-W-W-H-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "C#",
+        "D#",
+        "F",
+        "G",
+        "G#",
+        "A#",
+        "C"
+      ],
+      "note_count": 7
+    },
+    "C# Mixolydian": {
+      "root": "C#",
+      "scale_type": "Mixolydian",
+      "formula": "W-W-H-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "C#",
+        "D#",
+        "F",
+        "F#",
+        "G#",
+        "A#",
+        "B"
+      ],
+      "note_count": 7
+    },
+    "C# Locrian": {
+      "root": "C#",
+      "scale_type": "Locrian",
+      "formula": "H-W-W-H-W-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        6,
+        8,
+        10
+      ],
+      "notes": [
+        "C#",
+        "D",
+        "E",
+        "F#",
+        "G",
+        "A",
+        "B"
+      ],
+      "note_count": 7
+    },
+    "D Major": {
+      "root": "D",
+      "scale_type": "Major",
+      "formula": "W-W-H-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "D",
+        "E",
+        "F#",
+        "G",
+        "A",
+        "B",
+        "C#"
+      ],
+      "note_count": 7
+    },
+    "D Natural Minor": {
+      "root": "D",
+      "scale_type": "Natural Minor",
+      "formula": "W-H-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "D",
+        "E",
+        "F",
+        "G",
+        "A",
+        "A#",
+        "C"
+      ],
+      "note_count": 7
+    },
+    "D Harmonic Minor": {
+      "root": "D",
+      "scale_type": "Harmonic Minor",
+      "formula": "W-H-W-W-H-WH-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        11
+      ],
+      "notes": [
+        "D",
+        "E",
+        "F",
+        "G",
+        "A",
+        "A#",
+        "C#"
+      ],
+      "note_count": 7
+    },
+    "D Melodic Minor": {
+      "root": "D",
+      "scale_type": "Melodic Minor",
+      "formula": "W-H-W-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "D",
+        "E",
+        "F",
+        "G",
+        "A",
+        "B",
+        "C#"
+      ],
+      "note_count": 7
+    },
+    "D Dorian": {
+      "root": "D",
+      "scale_type": "Dorian",
+      "formula": "W-H-W-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "D",
+        "E",
+        "F",
+        "G",
+        "A",
+        "B",
+        "C"
+      ],
+      "note_count": 7
+    },
+    "D Phrygian": {
+      "root": "D",
+      "scale_type": "Phrygian",
+      "formula": "H-W-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "D",
+        "D#",
+        "F",
+        "G",
+        "A",
+        "A#",
+        "C"
+      ],
+      "note_count": 7
+    },
+    "D Lydian": {
+      "root": "D",
+      "scale_type": "Lydian",
+      "formula": "W-W-W-H-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "D",
+        "E",
+        "F#",
+        "G#",
+        "A",
+        "B",
+        "C#"
+      ],
+      "note_count": 7
+    },
+    "D Mixolydian": {
+      "root": "D",
+      "scale_type": "Mixolydian",
+      "formula": "W-W-H-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "D",
+        "E",
+        "F#",
+        "G",
+        "A",
+        "B",
+        "C"
+      ],
+      "note_count": 7
+    },
+    "D Locrian": {
+      "root": "D",
+      "scale_type": "Locrian",
+      "formula": "H-W-W-H-W-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        6,
+        8,
+        10
+      ],
+      "notes": [
+        "D",
+        "D#",
+        "F",
+        "G",
+        "G#",
+        "A#",
+        "C"
+      ],
+      "note_count": 7
+    },
+    "D# Major": {
+      "root": "D#",
+      "scale_type": "Major",
+      "formula": "W-W-H-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "D#",
+        "F",
+        "G",
+        "G#",
+        "A#",
+        "C",
+        "D"
+      ],
+      "note_count": 7
+    },
+    "D# Natural Minor": {
+      "root": "D#",
+      "scale_type": "Natural Minor",
+      "formula": "W-H-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "D#",
+        "F",
+        "F#",
+        "G#",
+        "A#",
+        "B",
+        "C#"
+      ],
+      "note_count": 7
+    },
+    "D# Harmonic Minor": {
+      "root": "D#",
+      "scale_type": "Harmonic Minor",
+      "formula": "W-H-W-W-H-WH-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        11
+      ],
+      "notes": [
+        "D#",
+        "F",
+        "F#",
+        "G#",
+        "A#",
+        "B",
+        "D"
+      ],
+      "note_count": 7
+    },
+    "D# Melodic Minor": {
+      "root": "D#",
+      "scale_type": "Melodic Minor",
+      "formula": "W-H-W-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "D#",
+        "F",
+        "F#",
+        "G#",
+        "A#",
+        "C",
+        "D"
+      ],
+      "note_count": 7
+    },
+    "D# Dorian": {
+      "root": "D#",
+      "scale_type": "Dorian",
+      "formula": "W-H-W-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "D#",
+        "F",
+        "F#",
+        "G#",
+        "A#",
+        "C",
+        "C#"
+      ],
+      "note_count": 7
+    },
+    "D# Phrygian": {
+      "root": "D#",
+      "scale_type": "Phrygian",
+      "formula": "H-W-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "D#",
+        "E",
+        "F#",
+        "G#",
+        "A#",
+        "B",
+        "C#"
+      ],
+      "note_count": 7
+    },
+    "D# Lydian": {
+      "root": "D#",
+      "scale_type": "Lydian",
+      "formula": "W-W-W-H-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "D#",
+        "F",
+        "G",
+        "A",
+        "A#",
+        "C",
+        "D"
+      ],
+      "note_count": 7
+    },
+    "D# Mixolydian": {
+      "root": "D#",
+      "scale_type": "Mixolydian",
+      "formula": "W-W-H-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "D#",
+        "F",
+        "G",
+        "G#",
+        "A#",
+        "C",
+        "C#"
+      ],
+      "note_count": 7
+    },
+    "D# Locrian": {
+      "root": "D#",
+      "scale_type": "Locrian",
+      "formula": "H-W-W-H-W-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        6,
+        8,
+        10
+      ],
+      "notes": [
+        "D#",
+        "E",
+        "F#",
+        "G#",
+        "A",
+        "B",
+        "C#"
+      ],
+      "note_count": 7
+    },
+    "E Major": {
+      "root": "E",
+      "scale_type": "Major",
+      "formula": "W-W-H-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "E",
+        "F#",
+        "G#",
+        "A",
+        "B",
+        "C#",
+        "D#"
+      ],
+      "note_count": 7
+    },
+    "E Natural Minor": {
+      "root": "E",
+      "scale_type": "Natural Minor",
+      "formula": "W-H-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "E",
+        "F#",
+        "G",
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "note_count": 7
+    },
+    "E Harmonic Minor": {
+      "root": "E",
+      "scale_type": "Harmonic Minor",
+      "formula": "W-H-W-W-H-WH-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        11
+      ],
+      "notes": [
+        "E",
+        "F#",
+        "G",
+        "A",
+        "B",
+        "C",
+        "D#"
+      ],
+      "note_count": 7
+    },
+    "E Melodic Minor": {
+      "root": "E",
+      "scale_type": "Melodic Minor",
+      "formula": "W-H-W-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "E",
+        "F#",
+        "G",
+        "A",
+        "B",
+        "C#",
+        "D#"
+      ],
+      "note_count": 7
+    },
+    "E Dorian": {
+      "root": "E",
+      "scale_type": "Dorian",
+      "formula": "W-H-W-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "E",
+        "F#",
+        "G",
+        "A",
+        "B",
+        "C#",
+        "D"
+      ],
+      "note_count": 7
+    },
+    "E Phrygian": {
+      "root": "E",
+      "scale_type": "Phrygian",
+      "formula": "H-W-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "E",
+        "F",
+        "G",
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "note_count": 7
+    },
+    "E Lydian": {
+      "root": "E",
+      "scale_type": "Lydian",
+      "formula": "W-W-W-H-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "E",
+        "F#",
+        "G#",
+        "A#",
+        "B",
+        "C#",
+        "D#"
+      ],
+      "note_count": 7
+    },
+    "E Mixolydian": {
+      "root": "E",
+      "scale_type": "Mixolydian",
+      "formula": "W-W-H-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "E",
+        "F#",
+        "G#",
+        "A",
+        "B",
+        "C#",
+        "D"
+      ],
+      "note_count": 7
+    },
+    "E Locrian": {
+      "root": "E",
+      "scale_type": "Locrian",
+      "formula": "H-W-W-H-W-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        6,
+        8,
+        10
+      ],
+      "notes": [
+        "E",
+        "F",
+        "G",
+        "A",
+        "A#",
+        "C",
+        "D"
+      ],
+      "note_count": 7
+    },
+    "F Major": {
+      "root": "F",
+      "scale_type": "Major",
+      "formula": "W-W-H-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "F",
+        "G",
+        "A",
+        "A#",
+        "C",
+        "D",
+        "E"
+      ],
+      "note_count": 7
+    },
+    "F Natural Minor": {
+      "root": "F",
+      "scale_type": "Natural Minor",
+      "formula": "W-H-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "F",
+        "G",
+        "G#",
+        "A#",
+        "C",
+        "C#",
+        "D#"
+      ],
+      "note_count": 7
+    },
+    "F Harmonic Minor": {
+      "root": "F",
+      "scale_type": "Harmonic Minor",
+      "formula": "W-H-W-W-H-WH-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        11
+      ],
+      "notes": [
+        "F",
+        "G",
+        "G#",
+        "A#",
+        "C",
+        "C#",
+        "E"
+      ],
+      "note_count": 7
+    },
+    "F Melodic Minor": {
+      "root": "F",
+      "scale_type": "Melodic Minor",
+      "formula": "W-H-W-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "F",
+        "G",
+        "G#",
+        "A#",
+        "C",
+        "D",
+        "E"
+      ],
+      "note_count": 7
+    },
+    "F Dorian": {
+      "root": "F",
+      "scale_type": "Dorian",
+      "formula": "W-H-W-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "F",
+        "G",
+        "G#",
+        "A#",
+        "C",
+        "D",
+        "D#"
+      ],
+      "note_count": 7
+    },
+    "F Phrygian": {
+      "root": "F",
+      "scale_type": "Phrygian",
+      "formula": "H-W-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "F",
+        "F#",
+        "G#",
+        "A#",
+        "C",
+        "C#",
+        "D#"
+      ],
+      "note_count": 7
+    },
+    "F Lydian": {
+      "root": "F",
+      "scale_type": "Lydian",
+      "formula": "W-W-W-H-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "F",
+        "G",
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "note_count": 7
+    },
+    "F Mixolydian": {
+      "root": "F",
+      "scale_type": "Mixolydian",
+      "formula": "W-W-H-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "F",
+        "G",
+        "A",
+        "A#",
+        "C",
+        "D",
+        "D#"
+      ],
+      "note_count": 7
+    },
+    "F Locrian": {
+      "root": "F",
+      "scale_type": "Locrian",
+      "formula": "H-W-W-H-W-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        6,
+        8,
+        10
+      ],
+      "notes": [
+        "F",
+        "F#",
+        "G#",
+        "A#",
+        "B",
+        "C#",
+        "D#"
+      ],
+      "note_count": 7
+    },
+    "F# Major": {
+      "root": "F#",
+      "scale_type": "Major",
+      "formula": "W-W-H-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "F#",
+        "G#",
+        "A#",
+        "B",
+        "C#",
+        "D#",
+        "F"
+      ],
+      "note_count": 7
+    },
+    "F# Natural Minor": {
+      "root": "F#",
+      "scale_type": "Natural Minor",
+      "formula": "W-H-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "F#",
+        "G#",
+        "A",
+        "B",
+        "C#",
+        "D",
+        "E"
+      ],
+      "note_count": 7
+    },
+    "F# Harmonic Minor": {
+      "root": "F#",
+      "scale_type": "Harmonic Minor",
+      "formula": "W-H-W-W-H-WH-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        11
+      ],
+      "notes": [
+        "F#",
+        "G#",
+        "A",
+        "B",
+        "C#",
+        "D",
+        "F"
+      ],
+      "note_count": 7
+    },
+    "F# Melodic Minor": {
+      "root": "F#",
+      "scale_type": "Melodic Minor",
+      "formula": "W-H-W-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "F#",
+        "G#",
+        "A",
+        "B",
+        "C#",
+        "D#",
+        "F"
+      ],
+      "note_count": 7
+    },
+    "F# Dorian": {
+      "root": "F#",
+      "scale_type": "Dorian",
+      "formula": "W-H-W-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "F#",
+        "G#",
+        "A",
+        "B",
+        "C#",
+        "D#",
+        "E"
+      ],
+      "note_count": 7
+    },
+    "F# Phrygian": {
+      "root": "F#",
+      "scale_type": "Phrygian",
+      "formula": "H-W-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "F#",
+        "G",
+        "A",
+        "B",
+        "C#",
+        "D",
+        "E"
+      ],
+      "note_count": 7
+    },
+    "F# Lydian": {
+      "root": "F#",
+      "scale_type": "Lydian",
+      "formula": "W-W-W-H-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "F#",
+        "G#",
+        "A#",
+        "C",
+        "C#",
+        "D#",
+        "F"
+      ],
+      "note_count": 7
+    },
+    "F# Mixolydian": {
+      "root": "F#",
+      "scale_type": "Mixolydian",
+      "formula": "W-W-H-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "F#",
+        "G#",
+        "A#",
+        "B",
+        "C#",
+        "D#",
+        "E"
+      ],
+      "note_count": 7
+    },
+    "F# Locrian": {
+      "root": "F#",
+      "scale_type": "Locrian",
+      "formula": "H-W-W-H-W-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        6,
+        8,
+        10
+      ],
+      "notes": [
+        "F#",
+        "G",
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "note_count": 7
+    },
+    "G Major": {
+      "root": "G",
+      "scale_type": "Major",
+      "formula": "W-W-H-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "G",
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F#"
+      ],
+      "note_count": 7
+    },
+    "G Natural Minor": {
+      "root": "G",
+      "scale_type": "Natural Minor",
+      "formula": "W-H-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "G",
+        "A",
+        "A#",
+        "C",
+        "D",
+        "D#",
+        "F"
+      ],
+      "note_count": 7
+    },
+    "G Harmonic Minor": {
+      "root": "G",
+      "scale_type": "Harmonic Minor",
+      "formula": "W-H-W-W-H-WH-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        11
+      ],
+      "notes": [
+        "G",
+        "A",
+        "A#",
+        "C",
+        "D",
+        "D#",
+        "F#"
+      ],
+      "note_count": 7
+    },
+    "G Melodic Minor": {
+      "root": "G",
+      "scale_type": "Melodic Minor",
+      "formula": "W-H-W-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "G",
+        "A",
+        "A#",
+        "C",
+        "D",
+        "E",
+        "F#"
+      ],
+      "note_count": 7
+    },
+    "G Dorian": {
+      "root": "G",
+      "scale_type": "Dorian",
+      "formula": "W-H-W-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "G",
+        "A",
+        "A#",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "note_count": 7
+    },
+    "G Phrygian": {
+      "root": "G",
+      "scale_type": "Phrygian",
+      "formula": "H-W-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "G",
+        "G#",
+        "A#",
+        "C",
+        "D",
+        "D#",
+        "F"
+      ],
+      "note_count": 7
+    },
+    "G Lydian": {
+      "root": "G",
+      "scale_type": "Lydian",
+      "formula": "W-W-W-H-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "G",
+        "A",
+        "B",
+        "C#",
+        "D",
+        "E",
+        "F#"
+      ],
+      "note_count": 7
+    },
+    "G Mixolydian": {
+      "root": "G",
+      "scale_type": "Mixolydian",
+      "formula": "W-W-H-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "G",
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "note_count": 7
+    },
+    "G Locrian": {
+      "root": "G",
+      "scale_type": "Locrian",
+      "formula": "H-W-W-H-W-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        6,
+        8,
+        10
+      ],
+      "notes": [
+        "G",
+        "G#",
+        "A#",
+        "C",
+        "C#",
+        "D#",
+        "F"
+      ],
+      "note_count": 7
+    },
+    "G# Major": {
+      "root": "G#",
+      "scale_type": "Major",
+      "formula": "W-W-H-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "G#",
+        "A#",
+        "C",
+        "C#",
+        "D#",
+        "F",
+        "G"
+      ],
+      "note_count": 7
+    },
+    "G# Natural Minor": {
+      "root": "G#",
+      "scale_type": "Natural Minor",
+      "formula": "W-H-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "G#",
+        "A#",
+        "B",
+        "C#",
+        "D#",
+        "E",
+        "F#"
+      ],
+      "note_count": 7
+    },
+    "G# Harmonic Minor": {
+      "root": "G#",
+      "scale_type": "Harmonic Minor",
+      "formula": "W-H-W-W-H-WH-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        11
+      ],
+      "notes": [
+        "G#",
+        "A#",
+        "B",
+        "C#",
+        "D#",
+        "E",
+        "G"
+      ],
+      "note_count": 7
+    },
+    "G# Melodic Minor": {
+      "root": "G#",
+      "scale_type": "Melodic Minor",
+      "formula": "W-H-W-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "G#",
+        "A#",
+        "B",
+        "C#",
+        "D#",
+        "F",
+        "G"
+      ],
+      "note_count": 7
+    },
+    "G# Dorian": {
+      "root": "G#",
+      "scale_type": "Dorian",
+      "formula": "W-H-W-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "G#",
+        "A#",
+        "B",
+        "C#",
+        "D#",
+        "F",
+        "F#"
+      ],
+      "note_count": 7
+    },
+    "G# Phrygian": {
+      "root": "G#",
+      "scale_type": "Phrygian",
+      "formula": "H-W-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "G#",
+        "A",
+        "B",
+        "C#",
+        "D#",
+        "E",
+        "F#"
+      ],
+      "note_count": 7
+    },
+    "G# Lydian": {
+      "root": "G#",
+      "scale_type": "Lydian",
+      "formula": "W-W-W-H-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "G#",
+        "A#",
+        "C",
+        "D",
+        "D#",
+        "F",
+        "G"
+      ],
+      "note_count": 7
+    },
+    "G# Mixolydian": {
+      "root": "G#",
+      "scale_type": "Mixolydian",
+      "formula": "W-W-H-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "G#",
+        "A#",
+        "C",
+        "C#",
+        "D#",
+        "F",
+        "F#"
+      ],
+      "note_count": 7
+    },
+    "G# Locrian": {
+      "root": "G#",
+      "scale_type": "Locrian",
+      "formula": "H-W-W-H-W-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        6,
+        8,
+        10
+      ],
+      "notes": [
+        "G#",
+        "A",
+        "B",
+        "C#",
+        "D",
+        "E",
+        "F#"
+      ],
+      "note_count": 7
+    },
+    "A Major": {
+      "root": "A",
+      "scale_type": "Major",
+      "formula": "W-W-H-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "A",
+        "B",
+        "C#",
+        "D",
+        "E",
+        "F#",
+        "G#"
+      ],
+      "note_count": 7
+    },
+    "A Natural Minor": {
+      "root": "A",
+      "scale_type": "Natural Minor",
+      "formula": "W-H-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+      ],
+      "note_count": 7
+    },
+    "A Harmonic Minor": {
+      "root": "A",
+      "scale_type": "Harmonic Minor",
+      "formula": "W-H-W-W-H-WH-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        11
+      ],
+      "notes": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G#"
+      ],
+      "note_count": 7
+    },
+    "A Melodic Minor": {
+      "root": "A",
+      "scale_type": "Melodic Minor",
+      "formula": "W-H-W-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F#",
+        "G#"
+      ],
+      "note_count": 7
+    },
+    "A Dorian": {
+      "root": "A",
+      "scale_type": "Dorian",
+      "formula": "W-H-W-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F#",
+        "G"
+      ],
+      "note_count": 7
+    },
+    "A Phrygian": {
+      "root": "A",
+      "scale_type": "Phrygian",
+      "formula": "H-W-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "A",
+        "A#",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G"
+      ],
+      "note_count": 7
+    },
+    "A Lydian": {
+      "root": "A",
+      "scale_type": "Lydian",
+      "formula": "W-W-W-H-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "A",
+        "B",
+        "C#",
+        "D#",
+        "E",
+        "F#",
+        "G#"
+      ],
+      "note_count": 7
+    },
+    "A Mixolydian": {
+      "root": "A",
+      "scale_type": "Mixolydian",
+      "formula": "W-W-H-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "A",
+        "B",
+        "C#",
+        "D",
+        "E",
+        "F#",
+        "G"
+      ],
+      "note_count": 7
+    },
+    "A Locrian": {
+      "root": "A",
+      "scale_type": "Locrian",
+      "formula": "H-W-W-H-W-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        6,
+        8,
+        10
+      ],
+      "notes": [
+        "A",
+        "A#",
+        "C",
+        "D",
+        "D#",
+        "F",
+        "G"
+      ],
+      "note_count": 7
+    },
+    "A# Major": {
+      "root": "A#",
+      "scale_type": "Major",
+      "formula": "W-W-H-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "A#",
+        "C",
+        "D",
+        "D#",
+        "F",
+        "G",
+        "A"
+      ],
+      "note_count": 7
+    },
+    "A# Natural Minor": {
+      "root": "A#",
+      "scale_type": "Natural Minor",
+      "formula": "W-H-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "A#",
+        "C",
+        "C#",
+        "D#",
+        "F",
+        "F#",
+        "G#"
+      ],
+      "note_count": 7
+    },
+    "A# Harmonic Minor": {
+      "root": "A#",
+      "scale_type": "Harmonic Minor",
+      "formula": "W-H-W-W-H-WH-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        11
+      ],
+      "notes": [
+        "A#",
+        "C",
+        "C#",
+        "D#",
+        "F",
+        "F#",
+        "A"
+      ],
+      "note_count": 7
+    },
+    "A# Melodic Minor": {
+      "root": "A#",
+      "scale_type": "Melodic Minor",
+      "formula": "W-H-W-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "A#",
+        "C",
+        "C#",
+        "D#",
+        "F",
+        "G",
+        "A"
+      ],
+      "note_count": 7
+    },
+    "A# Dorian": {
+      "root": "A#",
+      "scale_type": "Dorian",
+      "formula": "W-H-W-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "A#",
+        "C",
+        "C#",
+        "D#",
+        "F",
+        "G",
+        "G#"
+      ],
+      "note_count": 7
+    },
+    "A# Phrygian": {
+      "root": "A#",
+      "scale_type": "Phrygian",
+      "formula": "H-W-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "A#",
+        "B",
+        "C#",
+        "D#",
+        "F",
+        "F#",
+        "G#"
+      ],
+      "note_count": 7
+    },
+    "A# Lydian": {
+      "root": "A#",
+      "scale_type": "Lydian",
+      "formula": "W-W-W-H-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "A#",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "A"
+      ],
+      "note_count": 7
+    },
+    "A# Mixolydian": {
+      "root": "A#",
+      "scale_type": "Mixolydian",
+      "formula": "W-W-H-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "A#",
+        "C",
+        "D",
+        "D#",
+        "F",
+        "G",
+        "G#"
+      ],
+      "note_count": 7
+    },
+    "A# Locrian": {
+      "root": "A#",
+      "scale_type": "Locrian",
+      "formula": "H-W-W-H-W-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        6,
+        8,
+        10
+      ],
+      "notes": [
+        "A#",
+        "B",
+        "C#",
+        "D#",
+        "E",
+        "F#",
+        "G#"
+      ],
+      "note_count": 7
+    },
+    "B Major": {
+      "root": "B",
+      "scale_type": "Major",
+      "formula": "W-W-H-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "B",
+        "C#",
+        "D#",
+        "E",
+        "F#",
+        "G#",
+        "A#"
+      ],
+      "note_count": 7
+    },
+    "B Natural Minor": {
+      "root": "B",
+      "scale_type": "Natural Minor",
+      "formula": "W-H-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "B",
+        "C#",
+        "D",
+        "E",
+        "F#",
+        "G",
+        "A"
+      ],
+      "note_count": 7
+    },
+    "B Harmonic Minor": {
+      "root": "B",
+      "scale_type": "Harmonic Minor",
+      "formula": "W-H-W-W-H-WH-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        8,
+        11
+      ],
+      "notes": [
+        "B",
+        "C#",
+        "D",
+        "E",
+        "F#",
+        "G",
+        "A#"
+      ],
+      "note_count": 7
+    },
+    "B Melodic Minor": {
+      "root": "B",
+      "scale_type": "Melodic Minor",
+      "formula": "W-H-W-W-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "B",
+        "C#",
+        "D",
+        "E",
+        "F#",
+        "G#",
+        "A#"
+      ],
+      "note_count": 7
+    },
+    "B Dorian": {
+      "root": "B",
+      "scale_type": "Dorian",
+      "formula": "W-H-W-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        3,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "B",
+        "C#",
+        "D",
+        "E",
+        "F#",
+        "G#",
+        "A"
+      ],
+      "note_count": 7
+    },
+    "B Phrygian": {
+      "root": "B",
+      "scale_type": "Phrygian",
+      "formula": "H-W-W-W-H-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        7,
+        8,
+        10
+      ],
+      "notes": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F#",
+        "G",
+        "A"
+      ],
+      "note_count": 7
+    },
+    "B Lydian": {
+      "root": "B",
+      "scale_type": "Lydian",
+      "formula": "W-W-W-H-W-W-H",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        6,
+        7,
+        9,
+        11
+      ],
+      "notes": [
+        "B",
+        "C#",
+        "D#",
+        "F",
+        "F#",
+        "G#",
+        "A#"
+      ],
+      "note_count": 7
+    },
+    "B Mixolydian": {
+      "root": "B",
+      "scale_type": "Mixolydian",
+      "formula": "W-W-H-W-W-H-W",
+      "intervals_semitones": [
+        0,
+        2,
+        4,
+        5,
+        7,
+        9,
+        10
+      ],
+      "notes": [
+        "B",
+        "C#",
+        "D#",
+        "E",
+        "F#",
+        "G#",
+        "A"
+      ],
+      "note_count": 7
+    },
+    "B Locrian": {
+      "root": "B",
+      "scale_type": "Locrian",
+      "formula": "H-W-W-H-W-W-W",
+      "intervals_semitones": [
+        0,
+        1,
+        3,
+        5,
+        6,
+        8,
+        10
+      ],
+      "notes": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "A"
+      ],
+      "note_count": 7
+    }
+  }
+}

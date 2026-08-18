@@ -1,0 +1,53 @@
+{
+  "title": "Piano & Ornamentation Skill",
+  "purpose": "How to render a vocal melody expressively on the PIANO — with dynamics, articulation, and Indian-classical ornaments (meend, gamak, kan-swar, vibrato).",
+  "piano_expression": {
+    "velocity": "Map the audio's RMS energy per note to MIDI velocity (1-127). Loud notes hit harder, soft notes gently. This alone removes the robotic feel.",
+    "legato": "Connect notes in a phrase — extend each note slightly so it overlaps the next onset, creating a smooth flowing line like the human voice.",
+    "sustain_pedal": "On long held notes, sustain so they ring out naturally instead of cutting off abruptly.",
+    "micro_timing": "Preserve the human rubato/groove from the original — do not lock every note to a strict grid."
+  },
+  "ornaments": {
+    "meend": {
+      "name": "Meend (portamento / glide)",
+      "definition": "A smooth continuous slide from one note to the next, without articulating the intermediate pitches.",
+      "piano_rendering": "A real piano cannot bend pitch. Emulate meend with a FAST GRACE-NOTE RUN: play the intermediate scale notes (or chromatic notes) very quickly between the start and target notes, ending on the target. Use low velocity on the passing notes so the target note stands out.",
+      "example": "Sa -> Ma meend over ~0.3s: quickly play Re, Ga then arrive on Ma."
+    },
+    "gamak": {
+      "name": "Gamak (oscillation / shake)",
+      "definition": "A rapid, deliberate oscillation between a note and its adjacent note(s) — very characteristic of Hindustani vocal and sitar.",
+      "piano_rendering": "Render as a TRILL: rapidly alternate the main note with its upper (or lower) neighbor at the song's tempo (e.g. eighth/sixteenth note alternations) for the duration of the note.",
+      "example": "Pa with gamak: alternate Pa-Ga-Pa-Ga-Pa quickly."
+    },
+    "kan_swar": {
+      "name": "Kan-swar (grace note / mordent)",
+      "definition": "A very short grace note played just before the main note, approached from above or below.",
+      "piano_rendering": "Play a tiny (very short, quiet) passing note a semitone or tone away immediately before the main note attack.",
+      "example": "Re with kan: quickly touch D#/D then land on Re."
+    },
+    "vibrato": {
+      "name": "Vibrato",
+      "definition": "A subtle, periodic wavering of pitch on a sustained note (not as pronounced as gamak).",
+      "piano_rendering": "On piano, emulate with a very fast, quiet trill between the note and a semitone neighbor, OR add a second overlapping voice at a slightly detuned pitch for warmth.",
+      "note": "Use sparingly — heavy vibrato on piano can sound muddy. Prefer gamak-style trills."
+    },
+    "sustain": {
+      "name": "Long held note",
+      "definition": "A note held over several beats — the emotional anchor of a phrase.",
+      "piano_rendering": "Hold the note for its full duration with sustain; let it ring. Do not cut it short."
+    }
+  },
+  "rendering_priority": {
+    "1": "Correct pitch + rhythm (the notes themselves)",
+    "2": "Dynamics (velocity) — removes robotic feel",
+    "3": "Legato + sustain — smooths transitions",
+    "4": "Ornaments (meend/gamak/kan) — adds the Indian-classical character",
+    "5": "Micro-timing — the final human polish"
+  },
+  "warnings": [
+    "Ornaments must be TEMPO-CORRECT — too fast is unintelligible, too slow muddies the melody.",
+    "Do not add ornaments to every note — use them where the pitch curve actually shows a glide or oscillation. Over-ornamentation destroys clarity.",
+    "Grace-note runs (meend) should be QUIET relative to the target note so the melody remains clear."
+  ]
+}
