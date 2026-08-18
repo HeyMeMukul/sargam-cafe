@@ -72,6 +72,55 @@ def build_template_vector(root_pc, intervals, weight):
     return vec
 
 
+def _pc_to_midi(pc, lo, hi):
+    """Return the single MIDI note for pitch class `pc` within [lo, hi)."""
+    return lo + ((pc - lo) % 12)
+
+
+def _voiced_inversions(root_pc, ivs):
+    """Candidate left-hand voicings (bass + inner tones) for a chord.
+
+    Enumerates the inversions of the chord's interval set and keeps only the
+    ones whose lowest (bass) tone is the root or fifth. The bass is voiced in
+    MIDI 36-48 while the remaining 1-3 inner tones sit tightly in MIDI 48-60,
+    so the accompaniment is spread rather than a dense block.
+    """
+    pcs = sorted({(root_pc + iv) % 12 for iv in ivs})
+    fifth_iv = next((iv for iv in ivs if iv in (6, 7)), 7)
+    bass_pcs = {root_pc, (root_pc + fifth_iv) % 12}
+    candidates = []
+    for r in range(len(pcs)):
+        ordered = pcs[r:] + pcs[:r]
+        bass_pc = ordered[0]
+        if bass_pc not in bass_pcs:
+            continue
+        bass = _pc_to_midi(bass_pc, 36, 48)
+        inner = sorted(_pc_to_midi(pc, 48, 60) for pc in ordered[1:])
+        candidates.append([bass] + inner)
+    # de-dupe and prefer the root in the bass as the stable default
+    uniq = []
+    for c in candidates:
+        if c not in uniq:
+            uniq.append(c)
+    uniq.sort(key=lambda c: 0 if c[0] % 12 == root_pc else 1)
+    return uniq
+
+
+def _voice_cost(prev, cand):
+    """Total absolute semitone movement vs the previous voicing (voice-leading)."""
+    a = sorted(prev)
+    b = sorted(cand)
+    n = min(len(a), len(b))
+    cost = float(sum(abs(x - y) for x, y in zip(a[:n], b[:n])))
+    if len(b) > n:
+        top = a[-1]
+        cost += sum(abs(x - top) for x in b[n:])
+    elif len(a) > n:
+        top = b[-1]
+        cost += sum(abs(x - top) for x in a[n:])
+    return cost
+
+
 def detect_chords(audio_filepath: str, root_pc: int, thaat: str,
                   chord_len=2.0):
     """Return a chord progression with left-hand voicing, bass-aware root
@@ -176,24 +225,26 @@ def detect_chords(audio_filepath: str, root_pc: int, thaat: str,
                   if cand_scores[ci] is not None else -1 for ci in range(n_chunks)]
 
     chords = []
+    prev_voicing = None
     for ci in range(n_chunks):
         t0 = ci * chord_len
         t1 = min((ci + 1) * chord_len, duration)
         if chosen[ci] < 0 or cand_scores[ci] is None:
+            prev_voicing = None
             continue
         idx = chosen[ci]
         best = templates[idx]
         ivs, w = CHORD_TEMPLATES[best['quality']]
-        # left-hand voicing: root in MIDI 36-47 range (C2-B3), build upward
-        root_oct = 2  # root around C2..B2
-        midis = []
-        for iv in ivs:
-            midi = best['root'] + iv + 12 * root_oct
-            while midi < 48:
-                midi += 12
-            while midi > 60:
-                midi -= 12
-            midis.append(midi)
+        # left-hand, voice-led voicing: bass (root/fifth) in MIDI 36-48 plus
+        # tight inner tones in 48-60, choosing the inversion that moves least.
+        candidates = _voiced_inversions(best['root'], ivs)
+        if not candidates:
+            candidates = [[_pc_to_midi(best['root'], 36, 48)]]
+        if prev_voicing is None:
+            midis = candidates[0]
+        else:
+            midis = min(candidates, key=lambda c: _voice_cost(prev_voicing, c))
+        prev_voicing = midis
         # confidence from the normalized template score
         score = cand_scores[ci][idx]
         conf = float(round(min(1.0, max(0.0, (score - 0.5) * 1.5)), 3))

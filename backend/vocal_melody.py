@@ -242,6 +242,122 @@ def pitch_track_torchcrepe(vocals_path: str):
     return times[:n], midi[:n], periodicity[:n], rms[:n], sr, onset_env_crepe[:n], bright[:n]
 
 
+def _merge_note_pair(a, b):
+    """Combine two adjacent note dicts, preserving raw evidence fields."""
+    da = a['end'] - a['start']
+    db = b['end'] - b['start']
+    tot = da + db
+    wa = da / tot if tot > 0 else 0.5
+    wb = db / tot if tot > 0 else 0.5
+    merged = dict(a)
+    merged['end'] = b['end']
+    merged['midi'] = int(round(wa * a['midi'] + wb * b['midi']))
+    merged['velocity'] = max(a.get('velocity', 0.0), b.get('velocity', 0.0))
+    ra = a.get('raw_midi_float')
+    rb = b.get('raw_midi_float')
+    if ra is not None and rb is not None:
+        merged['raw_midi_float'] = round(wa * ra + wb * rb, 3)
+    elif rb is not None:
+        merged['raw_midi_float'] = rb
+    merged['pitch_confidence'] = max(a.get('pitch_confidence', 0.0),
+                                     b.get('pitch_confidence', 0.0))
+    merged['voicing_confidence'] = max(a.get('voicing_confidence', 0.0),
+                                       b.get('voicing_confidence', 0.0))
+    merged['attack_energy'] = max(a.get('attack_energy', 0.0),
+                                  b.get('attack_energy', 0.0))
+    ba = a.get('brightness')
+    bb = b.get('brightness')
+    if ba is not None and bb is not None:
+        merged['brightness'] = round(wa * ba + wb * bb, 3)
+    merged['_attack'] = a.get('_attack', 0.0)
+    merged['_tail'] = b.get('_tail', a.get('_tail', 0.0))
+    if merged.get('raw_midi_float') is not None:
+        merged['cents_deviation'] = round(
+            (merged['raw_midi_float'] - merged['midi']) * 100.0, 1)
+    return merged
+
+
+def _collapse_octave_errors(notes):
+    """Pull a note that sits ~12 semitones off BOTH its neighbors (which are
+    within +/-4 semitones of each other) into the neighbor register."""
+    out = [dict(n) for n in notes]
+    for i in range(1, len(out) - 1):
+        m = out[i].get('midi')
+        mp = out[i - 1].get('midi')
+        mn = out[i + 1].get('midi')
+        if m is None or mp is None or mn is None:
+            continue
+        if abs(mp - mn) > 4:
+            continue
+        d_prev = m - mp
+        d_next = m - mn
+        if abs(d_prev - 12) <= 1 and abs(d_next - 12) <= 1:
+            shift = -12
+        elif abs(d_prev + 12) <= 1 and abs(d_next + 12) <= 1:
+            shift = 12
+        else:
+            continue
+        out[i]['midi'] = int(round((mp + mn) / 2.0))
+        r = out[i].get('raw_midi_float')
+        if r is not None:
+            out[i]['raw_midi_float'] = round(r + shift, 3)
+            out[i]['cents_deviation'] = round(
+                (out[i]['raw_midi_float'] - out[i]['midi']) * 100.0, 1)
+    return out
+
+
+def _merge_short_notes(notes, min_dur=0.060, att_thresh=0.05):
+    """Merge very short notes (< min_dur) with no onset support (attack energy
+    below att_thresh) into the neighbor with the closer pitch."""
+    out = [dict(n) for n in notes]
+    changed = True
+    while changed:
+        changed = False
+        new = []
+        i = 0
+        while i < len(out):
+            n = out[i]
+            dur = n['end'] - n['start']
+            att = n.get('attack_energy', 0.0)
+            if dur < min_dur and att < att_thresh:
+                has_left = bool(new)
+                has_right = i + 1 < len(out)
+                if has_left and has_right:
+                    left = new[-1]
+                    right = out[i + 1]
+                    m = n.get('midi', 60)
+                    if abs(left.get('midi', 60) - m) <= abs(right.get('midi', 60) - m):
+                        new[-1] = _merge_note_pair(left, n)
+                        i += 1
+                        changed = True
+                        continue
+                    new.append(_merge_note_pair(n, right))
+                    i += 2
+                    changed = True
+                    continue
+                elif has_left:
+                    new[-1] = _merge_note_pair(new[-1], n)
+                    i += 1
+                    changed = True
+                    continue
+                elif has_right:
+                    new.append(_merge_note_pair(n, out[i + 1]))
+                    i += 2
+                    changed = True
+                    continue
+            new.append(n)
+            i += 1
+        out = new
+    return out
+
+
+def _smooth_notes_dp(notes):
+    """Lightweight Viterbi/DP smoothing: octave collapse + short-note merge."""
+    if len(notes) < 2:
+        return list(notes)
+    return _merge_short_notes(_collapse_octave_errors(notes))
+
+
 def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
                   brightness=None, root_pc=None, intervals=None,
                   min_dur=0.035, period_thresh=0.4):
@@ -249,27 +365,33 @@ def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
     voicing-transition awareness (see accuracy review §2.2).
 
     Design:
-      - A raw (unquantized) continuous pitch curve is kept for ornaments and
-        evidence. A scale-quantized pitch is used ONLY for segmentation and the
-        sargam label; the raw pitch is preserved on every event.
+      - Note identity and boundaries come from the RAW (unquantized, smoothed)
+        pitch curve. A scale-quantized pitch is kept ONLY as a secondary soft
+        label (scale_midi -> sargam / note name); it never decides note identity.
       - Note boundaries come from EITHER a librosa onset (re-articulation, even
-        on the same pitch) OR a scale-pitch change that PERSISTS for a
-        hysteresis interval (min_stable) — so vibrato, portamento and one-frame
-        octave candidates do NOT create fake notes.
+        on the same pitch) OR a raw-pitch change that PERSISTS for a hysteresis
+        interval (min_stable) — so vibrato, portamento and one-frame octave
+        candidates do NOT create fake notes.
       - Short unvoiced gaps (< bridge) are bridged so a held note with a breath
         or vibrato is not split; a real gap becomes a rest.
+      - A final DP smoothing pass collapses octave errors and merges isolated
+        short notes with no onset support.
 
     Returns list of note dicts with raw evidence (raw_midi_float, cents,
-    pitch_confidence, voicing_confidence) plus ornaments.
+    pitch_confidence, voicing_confidence) plus ornaments and scale_midi.
     """
     voiced = periodicity > period_thresh
     # raw continuous pitch (smoothed) for evidence/ornament analysis
     pitch_cont = _running_median(np.where(voiced, midi, np.nan), window=7)
-    # scale-quantized pitch for segmentation + label (raw kept separately)
+    # RAW (unquantized, chromatic) pitch drives note identity and boundaries.
+    # Heavier smoothing than pitch_cont so vibrato/jitter does not fragment notes.
+    pitch_raw = _running_median(np.where(voiced, midi, np.nan), window=11)
+    # Scale-quantized pitch kept ONLY as a secondary soft label (scale_midi ->
+    # sargam / note name); it never decides note identity or boundaries.
     if root_pc is not None and intervals:
-        pitch = quantize_to_scale(midi, voiced, root_pc, intervals)
+        pitch_scale = quantize_to_scale(midi, voiced, root_pc, intervals)
     else:
-        pitch = np.where(voiced, np.round(midi), np.nan)
+        pitch_scale = np.where(voiced, np.round(midi), np.nan)
 
     n = len(times)
     sr_frames = 1.0 / (times[1] - times[0]) if len(times) > 1 else 200.0  # ~200 fps
@@ -286,21 +408,22 @@ def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
     # over-fragmentation fix). Real onsets still split notes independently.
     min_stable = max(2, int(round(150.0 / frame_ms)))  # ~150ms persistence
     bridge = 0.09  # bridge unvoiced gaps shorter than this
+    pitch_step = 0.7  # semitone tolerance: a real note change in raw pitch
 
     i = 0
     while i < n:
-        p = pitch[i]
+        p = pitch_raw[i]
         if np.isnan(p):
             i += 1
             continue
-        # find next voiced frame that differs from the current pitch
+        # find next voiced frame that differs from the current raw pitch
         j = i + 1
         while j < n:
             # if we hit an unvoiced gap longer than bridge, stop (rest)
-            if np.isnan(pitch[j]):
+            if np.isnan(pitch_raw[j]):
                 # look ahead across small gaps to see if pitch resumes
                 k = j
-                while k < n and np.isnan(pitch[k]):
+                while k < n and np.isnan(pitch_raw[k]):
                     k += 1
                 gap = times[k] - times[j] if k < n else 1e9
                 if gap > bridge:
@@ -308,10 +431,12 @@ def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
                     break
                 j = k
                 continue
-            if pitch[j] != p:
-                # confirm it persists for min_stable frames
+            if abs(pitch_raw[j] - p) > pitch_step:
+                # confirm it persists for min_stable frames (tolerance on raw)
+                ref = pitch_raw[j]
                 persist = 1
-                while j + persist < n and pitch[j + persist] == pitch[j]:
+                while j + persist < n and not np.isnan(pitch_raw[j + persist]) \
+                        and abs(pitch_raw[j + persist] - ref) <= pitch_step:
                     persist += 1
                 if persist >= min_stable:
                     boundaries.append(float(times[j]))
@@ -346,11 +471,16 @@ def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
         mask = (times >= t0) & (times < t1)
         if not mask.any():
             continue
-        seg_pitch = pitch[mask]
-        seg_pitch = seg_pitch[~np.isnan(seg_pitch)]
-        if len(seg_pitch) == 0:
+        seg_raw = pitch_raw[mask]
+        seg_raw = seg_raw[~np.isnan(seg_raw)]
+        if len(seg_raw) == 0:
             continue
-        note_midi = int(round(float(np.median(seg_pitch))))
+        # note identity from the RAW chromatic pitch median (not the scale)
+        note_midi = int(round(float(np.median(seg_raw))))
+        # scale-quantized soft label (sargam / note name only)
+        seg_scale = pitch_scale[mask]
+        seg_scale = seg_scale[~np.isnan(seg_scale)]
+        scale_midi = int(round(float(np.median(seg_scale)))) if len(seg_scale) else note_midi
         seg_rms = rms[mask]
         velocity = float(np.mean(seg_rms))
 
@@ -402,6 +532,7 @@ def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
         _att_norm = float(_att) if _att > 0 else 0.0
         entry = {'start': round(t0, 3), 'end': round(t1, 3),
                  'midi': note_midi, 'velocity': velocity,
+                 'scale_midi': scale_midi,
                  'raw_midi_float': round(raw_med, 3),
                  'cents_deviation': round(cents_dev, 1),
                  'pitch_confidence': round(pitch_conf, 3),
@@ -460,6 +591,14 @@ def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
                     (prev['raw_midi_float'] - prev['midi']) * 100.0, 1)
         else:
             merged.append(dict(nn))
+
+    # P6: lightweight Viterbi/DP smoothing pass (numpy only, no new deps):
+    #   (a) merge short isolated notes with no onset support into a neighbor;
+    #   (b) collapse octave errors (a note ~12 st off both neighbors).
+    # Evidence fields (raw_midi_float, cents_deviation, pitch/voicing confidence,
+    # attack_energy, brightness) are carried through the merge.
+    merged = _smooth_notes_dp(merged)
+
     # strip internal features; flag true sustains
     out = []
     for nn in merged:
@@ -542,35 +681,39 @@ def segment_phrases(melody, gap_thresh=0.18, cadence_dur=0.6, min_merge=4):
     contours = []
     for i, ph in enumerate(phrases):
         pid = i
-        peak_i = max(range(len(ph)), key=lambda k: ph[k].get('midi', 60))
-        rep = -1
-        pcs = [x['midi'] % 12 for x in ph]
-        for j, pcj in enumerate(contours):
-            if pcj == pcs:
-                rep = j
-                break
-        contours.append(pcs)
-        for k, s in enumerate(ph):
-            s['phrase_id'] = pid
-            s['phrase_peak'] = (k == peak_i)
-            s['phrase_cadence'] = (k == len(ph) - 1)
-            s['phrase_rep'] = rep
-            s['phrase_pos'] = round(k / max(1, len(ph) - 1), 3)
-    return phrases
 
-    # detect repeated phrase templates by pitch-class contour
-    contours = []
-    for i, ph in enumerate(phrases):
-        pid = i
-        peak_i = max(range(len(ph)), key=lambda k: ph[k].get('midi', 60))
-        # repeated if same pitch-class contour as an earlier phrase
+        # phrase_peak: NOT simply the highest midi. Pick the note that maximizes
+        # (duration * 0.5 + pitch_height_normalized * 0.5) among the LAST 60% of
+        # the phrase, so a lower tonal-resolution/arrival note near the end can
+        # be the peak.
+        midis = [s.get('midi', 60) for s in ph]
+        lo = min(midis)
+        hi = max(midis)
+        start_idx = max(0, int(len(ph) * 0.4))
+        peak_i = start_idx
+        best_score = -1.0
+        for k in range(start_idx, len(ph)):
+            s = ph[k]
+            dur = s['end'] - s['start']
+            phn = (s.get('midi', 60) - lo) / (hi - lo) if hi > lo else 0.5
+            score = dur * 0.5 + phn * 0.5
+            if score > best_score:
+                best_score = score
+                peak_i = k
+
+        # phrase_rep: approximate repeated-template detection (same number of
+        # notes AND >= 80% pitch-classes equal), so near-identical phrase
+        # families (1st/3rd, 2nd/4th) are recognized, not only exact matches.
         rep = -1
         pcs = [x['midi'] % 12 for x in ph]
         for j, pcj in enumerate(contours):
-            if pcj == pcs:
-                rep = j
-                break
+            if len(pcj) == len(pcs) and len(pcs) > 0:
+                same = sum(1 for a, b in zip(pcs, pcj) if a == b)
+                if same / len(pcs) >= 0.8:
+                    rep = j
+                    break
         contours.append(pcs)
+
         for k, s in enumerate(ph):
             s['phrase_id'] = pid
             s['phrase_peak'] = (k == peak_i)
@@ -636,18 +779,25 @@ def main():
     for n in notes:
         if not (48 <= n['midi'] <= 83):
             continue
-        interval = (n['midi'] - root_pc) % 12
+        # actual played pitch (midi / note) reflects the RAW chromatic pitch
+        midi_raw = n['midi']
+        interval = (midi_raw - root_pc) % 12
         note_name = scale_note_name(PC_TO_NOTE[root_pc], intervals, interval)
-        octave = n['midi'] // 12 - 1
+        octave = midi_raw // 12 - 1
+        # sargam is a SOFT label derived from the scale-quantized scale_midi
+        scale_midi = n.get('scale_midi', midi_raw)
+        scale_interval = (scale_midi - root_pc) % 12
+        sargam = INTERVAL_TO_SARGAM[scale_interval]
         entry = {
             'start': n['start'],
             'end': n['end'],
             'note': f'{note_name}{octave}',
             'pitch_class': note_name,
             'octave': octave,
-            'midi': n['midi'],
-            'sargam': INTERVAL_TO_SARGAM[interval],
+            'midi': midi_raw,
+            'sargam': sargam,
             'velocity': n['velocity'],
+            'scale_midi': scale_midi,
         }
         for f in ('ornament', 'glide_to', 'trill', 'sustain', 'kan',
                   'raw_midi_float', 'cents_deviation', 'pitch_confidence',

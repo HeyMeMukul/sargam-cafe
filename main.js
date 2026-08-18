@@ -1,5 +1,4 @@
 import * as Tone from 'tone';
-import { Piano } from '@tonejs/piano/build/piano/Piano';
 
 // --- PIANO CONFIGURATION ---
 const startOctave = 2;
@@ -28,29 +27,6 @@ let synth = null;
 // Initialize Sampler (Zero-lag, high quality)
 async function initSynth() {
   await Tone.start();
-  // Try to load the multi-sampled piano (velocity layers) for realism, but
-  // NON-BLOCKING: if samples are unavailable (offline/CDN down) we fall back
-  // to the reliable Tone.Sampler instead of hanging the UI on 404s.
-  (async () => {
-    try {
-      piano = new Piano({ velocities: 6 });
-      const timer = new Promise(r => setTimeout(() => r('timeout'), 6000));
-      const result = await Promise.race([piano.load().then(() => 'loaded'), timer]);
-      if (result === 'loaded' && piano.loaded) {
-        piano.toDestination();
-        pianoLoaded = true;
-        loadingStatus.textContent = "Piano Ready (multi-sampled)";
-      } else {
-        // samples never finished loading (CDN slow/down): do NOT mark ready
-        pianoLoaded = false;
-        loadingStatus.textContent = "Piano Ready";
-      }
-    } catch (e) {
-      pianoLoaded = false;
-      loadingStatus.textContent = "Piano Ready";
-    }
-    loadingStatus.classList.add('ready');
-  })();
   if (!synth) {
     return new Promise((resolve) => {
       synth = new Tone.Sampler({
@@ -123,29 +99,23 @@ function renderPiano() {
       whiteKeyCount++;
     }
 
-    key.addEventListener('mousedown', () => { playNote(n.note); });
-    key.addEventListener('mouseup', () => { stopNote(n.note); });
-    key.addEventListener('mouseleave', () => { stopNote(n.note); });
-    
+    // Pointer Events: mouse + touch + multi-touch + drag (P4)
+    key.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      try { key.setPointerCapture(e.pointerId); } catch (err) {}
+      const id = playNote(n.note);
+      key.__pt = id; // remember the voice id for this pointer
+    });
+    key.addEventListener('pointerup', (e) => { stopNote(n.note); });
+    key.addEventListener('pointercancel', (e) => { stopNote(n.note); });
+    key.addEventListener('pointerleave', () => { /* note held while dragging */ });
+
     keyElements[n.note] = key;
     pianoContainer.appendChild(key);
   });
 }
 
-function playNote(note) {
-  if (synth && synth.loaded && keyElements[note]) {
-    synth.triggerAttack(note);
-    keyElements[note].classList.add('active');
-  }
-}
-
-function stopNote(note) {
-  if (synth && synth.loaded && keyElements[note]) {
-    synth.triggerRelease(note);
-    keyElements[note].classList.remove('active');
-  }
-}
-
+// --- ONE renderer: the Tone.Sampler, used by EVERY path (P1) ---
 const ENHARMONIC = { 'E#': 'F', 'B#': 'C', 'Cb': 'B', 'Fb': 'E' };
 function pianoNoteName(note) {
   // Scale-degree names like E#4 map to the actual piano sample F4.
@@ -154,33 +124,73 @@ function pianoNoteName(note) {
   return (ENHARMONIC[m[1]] || m[1]) + m[2];
 }
 
-let piano = null; // multi-sampled @tonejs/piano (velocity layers)
-let pianoLoaded = false;
+// Shared audio/UI event bus (P2): every audio event publishes here and the
+// keyboard, live-note display and piano-roll subscribe. No subsystem invents
+// its own timing.
+const noteEventBus = {
+  listeners: new Set(),
+  on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); },
+  emit(ev) { this.listeners.forEach(fn => { try { fn(ev); } catch (e) {} }); }
+};
 
-// Play a note through the Human Touch layer. Uses the multi-sampled piano when
-// loaded (velocity-selected sample layer) else the Tone.Sampler fallback.
+// Reference-counted key state (P2): overlapping voices on the same pitch keep
+// the key lit until ALL voices end. No single timeout is the source of truth.
+const activeVoices = new Map(); // note -> Set of voiceIds
+let voiceCounter = 0;
+
+function uiNoteOn(note, voiceId) {
+  const set = activeVoices.get(note) || new Set();
+  set.add(voiceId);
+  activeVoices.set(note, set);
+  const key = keyElements[note];
+  if (key) { key.classList.add('active'); }
+}
+function uiNoteOff(note, voiceId) {
+  const set = activeVoices.get(note);
+  if (!set) return;
+  set.delete(voiceId);
+  if (!set.size) { activeVoices.delete(note); keyElements[note]?.classList.remove('active'); }
+}
+
+// Low-latency sampler attack/release entry (manual keys, MIDI).
+function playNote(note) {
+  const key = pianoNoteName(note);
+  if (synth && synth.loaded && keyElements[key]) {
+    const id = ++voiceCounter;
+    synth.triggerAttack(key, Tone.now(), 0.85);
+    uiNoteOn(key, id);
+    noteEventBus.emit({ type: 'noteOn', id, note: key, velocity: 0.85 });
+    return id;
+  }
+  return null;
+}
+function stopNote(note) {
+  const key = pianoNoteName(note);
+  if (synth && synth.loaded && keyElements[key]) {
+    synth.triggerRelease(key);
+  }
+}
+
+// THE single renderer for scheduled/automated playback (solo, with-song,
+// chords, ornaments). True duration + velocity + reference-counted visuals.
 window.agentPlayNote = (note, duration = '4n', velocity = 0.8) => {
+  if (!synth || !synth.loaded) return;
   let full = note;
   if (!/[0-9]$/.test(note)) full = `${note}4`;
   const key = pianoNoteName(full);
   if (!keyElements[key]) return;
   const v = Math.max(0.2, Math.min(1, velocity || 0.8));
-  const pianoReady = pianoLoaded && piano && piano.loaded;
-  if (pianoReady) {
-    try {
-      piano.keyDown(key, Tone.now(), v);
-      piano.keyUp(key, '+' + (typeof duration === 'number' ? duration : 0.5));
-    } catch (e) { /* fall through to sampler */ }
-  } else if (synth && synth.loaded) {
-    // reliable fallback: real sampled piano, amplitude mapped from velocity
-    synth.triggerAttackRelease(key, duration, Tone.now(), v);
-  }
-  keyElements[key].classList.add('active');
+  const id = ++voiceCounter;
+  const durMs = typeof duration === 'number' ? Math.max(40, duration * 1000) : 500;
+  synth.triggerAttackRelease(key, duration, Tone.now(), v);
+  uiNoteOn(key, id);
   keyElements[key].style.filter = `brightness(${1 + (v - 0.5) * 0.8})`;
+  noteEventBus.emit({ type: 'noteOn', id, note: key, velocity: v });
+  // release is scheduled at the true end; visuals cleared only when THIS voice ends
   setTimeout(() => {
-    keyElements[key].classList.remove('active');
-    keyElements[key].style.filter = '';
-  }, typeof duration === 'number' ? Math.min(8000, duration * 1000) : 500);
+    uiNoteOff(key, id);
+    if (!activeVoices.has(key)) keyElements[key].style.filter = '';
+  }, Math.min(8000, durMs));
 };
 
 renderPiano();
@@ -335,10 +345,8 @@ function allNotesOff() {
   try {
     if (synth && synth.loaded) {
       Object.keys(keyElements).forEach(k => synth.triggerRelease(k));
+      synth.releaseAll();
     }
-  } catch (e) { /* ignore */ }
-  try {
-    if (pianoLoaded && piano && piano.loaded) piano.pedalUp();
   } catch (e) { /* ignore */ }
   document.querySelectorAll('.key.active').forEach(k => k.classList.remove('active'));
 }
@@ -430,11 +438,22 @@ function buildPerformancePlan(melody, tempo) {
       const isPeak = !!s.phrase_peak;
       const isCadence = !!s.phrase_cadence;
       const tOff = phraseTimingOffset(pos, isPeak, isCadence, tempo);
-      const vel = phraseVelocity(s.velocity || 0.7, pos, isPeak, isCadence, tempo, seedRnd,
-                                 s.attack_energy, s.brightness);
+      // Melody velocity is the REFERENCE: prominence only lowers accompaniment,
+      // never the melody (creates the loudness gap between hands).
+      let vel = phraseVelocity(s.velocity || 0.7, pos, isPeak, isCadence, tempo, seedRnd,
+                               s.attack_energy, s.brightness);
+      // Confidence gating: low-confidence notes without a strong attack play
+      // quietly so uncertain detections don't cause loud, jarring strikes.
+      if ((s.pitch_confidence !== undefined && s.pitch_confidence < 0.3) &&
+          (s.attack_energy === undefined || s.attack_energy < 0.5)) {
+        vel *= 0.4;
+      }
       // cadence breath: extend release at phrase end
       let dur = s.end - s.start;
       if (isCadence) dur += HT_STATE.breath * (HT_STATE.mode === 'songlike' ? 1 : 0.2);
+      // Pedal emulation: no real sustain pedal API on the Sampler, so extend the
+      // phrase-cadence note to let it ring (sustain tail) when pedal is engaged.
+      if (isCadence && HT_STATE.pedal > 0.05) dur += HT_STATE.pedal * 0.3;
       const next = notes[k + 1];
       const gapToNext = next ? next.start - s.end : (s.end - s.start);
       const art = articulationRatio(gapToNext, tempo);
@@ -462,7 +481,9 @@ function buildPedalPlan(plan, tempo) {
   for (const pid in byPhrase) {
     const notes = byPhrase[pid];
     if (!notes.length) continue;
-    groups.push({ down: notes[0].performanceStart, up: notes[notes.length - 1].performanceEnd });
+    // Pedal scales the sustain tail of each phrase group (matches the note extension).
+    const sustainTail = HT_STATE.pedal * 0.3;
+    groups.push({ down: notes[0].performanceStart, up: notes[notes.length - 1].performanceEnd + sustainTail });
   }
   return groups.filter(g => HT_STATE.pedal > 0.05 && HT_STATE.mode === 'songlike');
 }
@@ -599,7 +620,7 @@ function playNotation(data, opts = {}) {
       const when = c.start;
       const dur = Math.max(0.5, c.end - c.start);
       notationTimers.push(setTimeout(() => {
-        (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, 0.28));
+        (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, Math.max(0.1, 0.28 - HT_STATE.prominence / 150)));
       }, when * 1000));
     });
   }
@@ -665,13 +686,33 @@ function setupHumanTouch() {
     HT_STATE.mode = b.id === 'ht-songlike' ? 'songlike' : 'faithful';
     refreshPerformancePlan();
   });
-  const bind = (el, key) => el.oninput = () => { HT_STATE[key] = parseFloat(el.value); refreshPerformancePlan(); };
+  const bind = (el, key) => el.oninput = () => {
+    HT_STATE[key] = parseFloat(el.value);
+    // update the live value label next to the slider
+    const val = el.nextElementSibling;
+    if (val && val.classList.contains('ht-value')) val.textContent = el.value;
+    refreshPerformancePlan();
+  };
   bind(htExpression, 'expression');
   bind(htRubato, 'rubato');
   bind(htBreath, 'breath');
   bind(htPedal, 'pedal');
   bind(htProminence, 'prominence');
   htSeed.onchange = () => { HT_STATE.seed = parseInt(htSeed.value) || 0; refreshPerformancePlan(); };
+
+  // Preview phrase: play the first phrase of the current performance plan so
+  // the user hears the Human Touch settings immediately.
+  const htPreview = document.getElementById('ht-preview');
+  if (htPreview) htPreview.onclick = () => {
+    if (!performancePlan || !performancePlan.length) return;
+    const minPid = Math.min(...performancePlan.map(p => p.phraseId));
+    performancePlan.filter(p => p.phraseId === minPid).forEach((p, i) => {
+      if (!p.note || p.note === '-') return;
+      setTimeout(() => {
+        window.agentPlayNote(p.note, p.duration, p.velocity);
+      }, i * 250);
+    });
+  };
 }
 
 const midiEnable = document.getElementById('midi-enable');
@@ -740,8 +781,9 @@ function onMidiMessage(e) {
     updateMidiDiag('aftertouch', (p * 100).toFixed(0) + '%');
   } else if (status === CONTROL_CHANGE && d1 === CC_SUSTAIN) {
     midiPedal = d2 >= 64;
-    if (pianoLoaded && piano) {
-      try { midiPedal ? piano.pedalDown() : piano.pedalUp(); } catch (err) {}
+    // The Sampler sustains naturally (no real pedal API): release all on pedal-up.
+    if (!midiPedal && synth && synth.loaded) {
+      try { synth.releaseAll(); } catch (err) {}
     }
     updateMidiDiag('pedal', midiPedal ? 'down' : 'up');
   }
@@ -833,7 +875,7 @@ function renderTranscription(data) {
         lastChordIndex = ci;
         const c = ch[ci];
         const dur = Math.max(0.5, c.end - c.start);
-        (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, 0.28));
+        (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, Math.max(0.1, 0.28 - HT_STATE.prominence / 150)));
       }
       if (ci === -1 && t > 0) lastChordIndex = -1; // outside all chords -> reset
     }
@@ -863,19 +905,10 @@ function renderTranscription(data) {
     stopWithSongScheduler();
     const endsAt = (audioPlayer.duration || 0);
     const plan = performancePlan; // Human Touch performance plan
-    let pedalIdx = 0;
-    const pedal = pedalPlan;      // sustain groups
     function tick() {
       rafId = requestAnimationFrame(tick);
       const t = audioPlayer.currentTime;
       if (audioPlayer.paused) return;
-      // sustain pedal at phrase boundaries (song-like mode)
-      if (pianoLoaded && piano && piano.loaded && HT_STATE.mode === 'songlike') {
-        while (pedalIdx < pedal.length && t >= pedal[pedalIdx].down) {
-          try { piano.pedalDown(); } catch (e) {}
-          pedalIdx++;
-        }
-      }
       // fire melody notes through the Human Touch plan
       if (wantMelody && plan.length) {
         for (let i = melTriggered + 1; i < plan.length; i++) {
@@ -895,7 +928,7 @@ function renderTranscription(data) {
           if (t >= c.start) {
             chordTriggered = i;
             const dur = Math.max(0.5, c.end - c.start);
-            const vel = Math.max(0.15, 0.28 - HT_STATE.prominence / 200);
+            const vel = Math.max(0.1, 0.28 - HT_STATE.prominence / 150);
             (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, vel));
           } else break;
         }
@@ -1141,12 +1174,6 @@ simBtn.addEventListener('click', () => {
       }));
     }
     const base = Tone.now() + 0.15; // small lead-in so Tone's look-ahead is stable
-    // schedule pedal from the plan (song-like mode)
-    if (pianoLoaded && piano && piano.loaded && HT_STATE.mode === 'songlike') {
-      pedalPlan.forEach(g => {
-        notationTimers.push(setTimeout(() => { try { piano.pedalDown(); } catch(e){} }, (base + g.down) * 1000 - Tone.now() * 1000));
-      });
-    }
     // Schedule each event at base + start (seconds), with true duration.
     evList.forEach(ev => {
       const note = ev.note;
