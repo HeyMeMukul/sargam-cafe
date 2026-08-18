@@ -47,6 +47,8 @@ TARGET_SECTION_LEN = 6.0    # aim for ~6s per subagent section
 MAX_SECTIONS = 32           # upper bound on parallel sections
 MAX_CONCURRENCY = 10        # subagents running at once
 SECTION_REVIEW_MODE = os.getenv("SARGAM_SECTION_REVIEW", "off").strip().lower()
+# Optional research side-channel; unset by default so normal runs are unchanged.
+EVIDENCE_DIR = os.getenv("SARGAM_EVIDENCE_DIR", "").strip()
 
 # Matches note names like C4, C#4, D#5, F#3, B2 inside a bash command
 NOTE_RE = re.compile(r"\b([A-G](?:#|b)?[0-9])\b")
@@ -503,8 +505,18 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
             await log_callback("[System] ROSVOT unavailable or failed; falling back to CREPE note extraction.")
     if not melody or not melody.get("melody"):
         await log_callback("[System] Extracting vocal melody (Demucs source separation + pitch tracking)...")
-        melody = await run_script(VOCAL_SCRIPT, audio_filepath, final["root"],
-                                  "--thaat", final["thaat"])
+        vocal_args = [audio_filepath, final["root"], "--thaat", final["thaat"]]
+        evidence_path = None
+        if EVIDENCE_DIR:
+            os.makedirs(EVIDENCE_DIR, exist_ok=True)
+            evidence_path = os.path.join(
+                EVIDENCE_DIR,
+                os.path.basename(audio_filepath) + ".evidence.json",
+            )
+            vocal_args.extend(["--evidence-out", evidence_path])
+        melody = await run_script(VOCAL_SCRIPT, *vocal_args)
+        if evidence_path and os.path.exists(evidence_path):
+            await log_callback(f"[System] Evidence side-channel written: {evidence_path}")
     if not melody or not melody.get("melody"):
         await log_callback("[System] Vocal extraction failed; falling back to Basic-Pitch...")
         melody = await run_script(MELODY_SCRIPT, audio_filepath, final["root"])

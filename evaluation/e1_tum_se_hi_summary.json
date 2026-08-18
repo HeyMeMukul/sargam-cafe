@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "clip": "tum-se-hi-jab-we-met-128-kbps-t6kdsjrq_xbStSoS0.mp3",
+  "duration_seconds": 29.7,
+  "baseline_event_count": 38,
+  "librosa_onset_count": 76,
+  "crepe_voiced_fraction": 0.9588,
+  "rmvpe_voiced_fraction": 0.894,
+  "voicing_disagreement_fraction": 0.1025,
+  "crepe_low_rmvpe_high_fraction": 0.0189,
+  "rmvpe_low_crepe_high_fraction": 0.0837,
+  "both_voiced_frames": 5199,
+  "median_abs_pitch_disagreement_semitones": 0.0839767456,
+  "fraction_within_0_5_semitones": 0.9648009233,
+  "librosa_onsets_without_pitch_change_within_100ms": 74,
+  "separation_ratio_median": 0.7046,
+  "separation_ratio_p10": 0.1577,
+  "separation_ratio_p90": 0.9153,
+  "interpretation": "On this clip, CREPE and RMVPE largely agree on voiced pitch, while generic onset candidates rarely coincide with a local pitch change. Boundary/onset modeling is the first backend target; this is diagnostic evidence, not ground-truth accuracy."
+}

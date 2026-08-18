@@ -75,4 +75,14 @@ Without it, the deterministic audio pipeline (key → chords → melody) still r
 4. Use the sidebar to toggle **Chords / Melody / With Song** layers and the **Human Touch** sliders (Expression, Rubato, Cadence breath, Pedal, Melody prominence, Seed).
 
 ## Evaluation
-`evaluation/` contains a mir_eval-based benchmark (`benchmark.py`) and reference-annotation helpers (`make_reference.py`, `validate_phrases.py`) to measure transcription accuracy (onset F1, note F1, octave-error rate, note-count ratio).
+`evaluation/` contains a mir_eval-based benchmark (`benchmark.py`), a strict ordered evaluator (`strict_sequence.py`), and reference-annotation helpers (`make_reference.py`, `validate_phrases.py`). The strict evaluator must be used for acceptance because it reports missing notes, extra notes, pitch mismatches, onset error, precision, recall, and F1 across the complete ordered sequence.
+
+### Evidence side-channel for decoder research
+
+Normal transcription output is unchanged by default. To export the frame-level CREPE evidence used by the decoder research pass, set `SARGAM_EVIDENCE_DIR` before starting the backend. The active `vocal_melody.py` path then writes one `<uploaded-filename>.evidence.json` file containing frame time, MIDI/F0, periodicity, voicing, RMS, onset strength, brightness, source-stem provenance, onsets, tempo, and the exact emitted melody.
+
+```bash
+export SARGAM_EVIDENCE_DIR=/absolute/path/to/evidence
+```
+
+This side-channel is diagnostic only; it does not alter the melody payload. In the first E1 experiment on the supplied Tum Se Hi clip, CREPE and RMVPE agreed within 0.5 semitones on 96.5% of frames where both were voiced, while 74 of 76 generic librosa onsets had no local CREPE pitch change within 100 ms. This strongly prioritizes boundary/onset decoding research over another pitch-scale correction, but it is not a ground-truth accuracy claim.

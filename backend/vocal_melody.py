@@ -736,6 +736,49 @@ def segment_phrases(melody, gap_thresh=0.18, cadence_dur=0.6, min_merge=4):
     return phrases
 
 
+def write_evidence_json(path, *, audio_filepath, vocals_path, times, midi,
+                        periodicity, rms, onset_env, brightness, onsets,
+                        tempo, beats, melody, root, thaat):
+    """Write frame evidence without changing the production melody payload.
+
+    This side-channel is intentionally opt-in. It preserves the current
+    extraction output while making pitch, voicing, onset, energy, and stem
+    provenance inspectable for decoder research and regression analysis.
+    """
+    rows = []
+    for i, t in enumerate(times):
+        f0 = float(midi[i]) if np.isfinite(midi[i]) else None
+        rows.append({
+            't': round(float(t), 4),
+            'midi_crepe': round(f0, 4) if f0 is not None else None,
+            'f0_hz': round(float(440.0 * 2 ** ((f0 - 69.0) / 12.0)), 3) if f0 is not None else 0.0,
+            'periodicity': round(float(periodicity[i]), 5),
+            'voiced': bool(periodicity[i] > 0.4),
+            'rms': round(float(rms[i]), 8),
+            'onset_strength': round(float(onset_env[i]), 6),
+            'brightness': round(float(brightness[i]), 6),
+        })
+    payload = {
+        'schema_version': 1,
+        'audio_filepath': os.path.abspath(audio_filepath),
+        'vocals_path': os.path.abspath(vocals_path),
+        'tracker': 'torchcrepe',
+        'frame_hop_seconds': round(float(times[1] - times[0]), 6) if len(times) > 1 else None,
+        'root': root,
+        'thaat': thaat,
+        'tempo': tempo,
+        'beats': beats,
+        'onsets': [round(float(x), 4) for x in onsets],
+        'frames': rows,
+        'melody': melody,
+    }
+    out_path = os.path.abspath(path)
+    os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
+    with open(out_path, 'w', encoding='utf-8') as fh:
+        json.dump(payload, fh, ensure_ascii=False)
+    return out_path
+
+
 def main():
     parser = argparse.ArgumentParser(description="Extract vocal melody (Demucs + CREPE).")
     parser.add_argument("audio_filepath")
@@ -744,6 +787,8 @@ def main():
     parser.add_argument("--cache-dir", help="Optional stems cache directory")
     parser.add_argument("--pitch-classes-only", action="store_true",
                         help="Output only the vocal pitch-class duration histogram and exit")
+    parser.add_argument("--evidence-out",
+                        help="Optional JSON side-channel for frame pitch/voicing/onset evidence")
     args = parser.parse_args()
 
     if args.pitch_classes_only:
@@ -839,6 +884,29 @@ def main():
         "melody": melody,
         "sargam_counts": sargam_counts,
     }
+    if args.evidence_out:
+        try:
+            evidence_path = write_evidence_json(
+                args.evidence_out,
+                audio_filepath=args.audio_filepath,
+                vocals_path=vocals_path,
+                times=times,
+                midi=midi,
+                periodicity=periodicity,
+                rms=rms,
+                onset_env=onset_env,
+                brightness=bright,
+                onsets=onsets,
+                tempo=tempo,
+                beats=beats,
+                melody=melody,
+                root=PC_TO_NOTE[root_pc],
+                thaat=args.thaat,
+            )
+            output['evidence_path'] = evidence_path
+        except Exception as e:
+            print(json.dumps({"error": f"Evidence export failed: {str(e)}"}))
+            sys.exit(1)
     print(json.dumps(output))
 
 
