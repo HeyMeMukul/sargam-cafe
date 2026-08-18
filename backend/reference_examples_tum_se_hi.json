@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "mode": "diagnostic_reference_conditioned",
+  "clip": "tum-se-hi-jab-we-met-128-kbps-t6kdsjrq_xbStSoS0.mp3",
+  "root": "F#",
+  "sargam_phrases": [
+    "G P R R G P P D",
+    "D S' P P D G G",
+    "S R G P R R G P P D",
+    "D S' P P D G G"
+  ],
+  "notes": "This is the user-provided phrase sequence for reference-conditioned experimentation. It is not a complete time-aligned ground-truth annotation and must not be used as an unrestricted accuracy claim."
+}

@@ -86,3 +86,13 @@ export SARGAM_EVIDENCE_DIR=/absolute/path/to/evidence
 ```
 
 This side-channel is diagnostic only; it does not alter the melody payload. In the first E1 experiment on the supplied Tum Se Hi clip, CREPE and RMVPE agreed within 0.5 semitones on 96.5% of frames where both were voiced, while 74 of 76 generic librosa onsets had no local CREPE pitch change within 100 ms. This strongly prioritizes boundary/onset decoding research over another pitch-scale correction, but it is not a ground-truth accuracy claim.
+
+### Optional reference-conditioned mode
+
+When the user has a trusted sargam sequence for a specific clip, `SARGAM_REFERENCE_FILE` enables an isolated reference-conditioned score. The backend automatically exports frame evidence, aligns exactly one event per supplied token, preserves repeated same-pitch tokens as retriggers, and disables the lossy section-review and duplicate-collapse stages for that guided score.
+
+```bash
+export SARGAM_REFERENCE_FILE=/absolute/path/to/backend/reference_examples_tum_se_hi.json
+```
+
+The supplied example is intentionally labeled `diagnostic_reference_conditioned`. It contains the user’s four Tum Se Hi phrases but does not contain manually verified onset/offset ground truth. Therefore this mode is useful for inspecting timing and auditioning a known phrase, but it must not be used to claim that the unrestricted audio-only transcriber is accurate. Leave the variable unset for normal audio-only behavior.

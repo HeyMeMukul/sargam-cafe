@@ -49,6 +49,7 @@ MAX_CONCURRENCY = 10        # subagents running at once
 SECTION_REVIEW_MODE = os.getenv("SARGAM_SECTION_REVIEW", "off").strip().lower()
 # Optional research side-channel; unset by default so normal runs are unchanged.
 EVIDENCE_DIR = os.getenv("SARGAM_EVIDENCE_DIR", "").strip()
+REFERENCE_FILE = os.getenv("SARGAM_REFERENCE_FILE", "").strip()
 
 # Matches note names like C4, C#4, D#5, F#3, B2 inside a bash command
 NOTE_RE = re.compile(r"\b([A-G](?:#|b)?[0-9])\b")
@@ -136,6 +137,91 @@ def sargam_for_note(note_name: str, root_pc: int):
 
 def midi_to_note(midi: int):
     return f"{PC_TO_NOTE[midi % 12]}{midi // 12 - 1}"
+
+
+def reference_tokens_from_file(path: str, root_pc: int):
+    """Load explicit sargam reference tokens without mutating audio-only mode."""
+    with open(path, 'r', encoding='utf-8') as fh:
+        data = json.load(fh)
+    tokens = data.get('tokens') if isinstance(data, dict) else data
+    if tokens:
+        out = []
+        for item in tokens:
+            if isinstance(item, str):
+                label = item
+                pitch_class = None
+            else:
+                label = str(item.get('label') or item.get('sargam') or 'S')
+                pitch_class = item.get('pitch_class')
+            if pitch_class is None:
+                deg = {'S': 0, 'R': 2, 'G': 4, 'M': 5, 'P': 7, 'D': 9, 'N': 11,
+                       'r': 1, 'g': 3, 'm': 6, 'd': 8, 'n': 10}
+                symbol = label[0]
+                if symbol not in deg:
+                    raise ValueError(f'Unknown sargam token: {label}')
+                pitch_class = (root_pc + deg[symbol] + (12 if "\'" in label else 0)) % 12
+            out.append({'label': label, 'pitch_class': int(pitch_class),
+                        'octave_hint': item.get('octave_hint') if isinstance(item, dict) else None})
+        return out
+    phrases = data.get('sargam_phrases') if isinstance(data, dict) else None
+    if not phrases:
+        raise ValueError('Reference file must contain tokens or sargam_phrases')
+    deg = {'S': 0, 'R': 2, 'G': 4, 'M': 5, 'P': 7, 'D': 9, 'N': 11,
+           'r': 1, 'g': 3, 'm': 6, 'd': 8, 'n': 10}
+    out = []
+    for phrase in phrases:
+        for label in str(phrase).split():
+            symbol = label[0]
+            if symbol not in deg:
+                raise ValueError(f'Unknown sargam token: {label}')
+            out.append({'label': label,
+                        'pitch_class': int((root_pc + deg[symbol] + (12 if "\'" in label else 0)) % 12),
+                        'octave_hint': None})
+    return out
+
+
+def apply_reference_alignment(melody, evidence_path: str, reference_path: str, root_pc: int):
+    """Replace only the optional guided score with a fixed-token alignment."""
+    from reference_score_alignment import ReferenceToken, align_reference_to_frames
+    with open(evidence_path, 'r', encoding='utf-8') as fh:
+        evidence = json.load(fh)
+    frames = evidence.get('frames') or []
+    if not frames:
+        raise ValueError('Evidence sidecar has no frames')
+    ref = [ReferenceToken(x['pitch_class'], x['label'], x.get('octave_hint'))
+           for x in reference_tokens_from_file(reference_path, root_pc)]
+    times = [x.get('t', 0.0) for x in frames]
+    midi = [x.get('midi_crepe') for x in frames]
+    voicing = [x.get('periodicity', 0.0) for x in frames]
+    onset = [x.get('onset_strength', 0.0) for x in frames]
+    rms = [x.get('rms', 0.0) for x in frames]
+    aligned = align_reference_to_frames(times, midi, voicing, onset, rms, ref)
+    if len(aligned) != len(ref):
+        raise ValueError(f'Reference alignment emitted {len(aligned)} of {len(ref)} tokens')
+    out = []
+    for item in aligned:
+        m = int(item['midi'])
+        iv = (m - root_pc) % 12
+        nm = scale_note_name(PC_TO_NOTE[root_pc], [0, 2, 4, 5, 7, 9, 11], iv)
+        out.append({
+            'start': item['start'], 'end': item['end'], 'note': f'{nm}{m // 12 - 1}',
+            'pitch_class': nm, 'octave': m // 12 - 1, 'midi': m,
+            'sargam': item['label'], 'velocity': 0.65,
+            'pitch_confidence': item['alignment_confidence'],
+            'voicing_confidence': item['alignment_confidence'],
+            'source_model': 'crepe+reference_score_alignment',
+            'reference_index': item['reference_index'],
+            'reference_pitch_class': item['reference_pitch_class'],
+            'retrigger': item.get('retrigger', False),
+            'articulation': 'retrigger' if item.get('retrigger') else 'normal',
+            'reference_alignment': True,
+        })
+    guided = dict(melody)
+    guided['melody'] = out
+    guided['transcriber'] = 'crepe+reference_score_alignment'
+    guided['reference_alignment'] = True
+    guided['reference_file'] = os.path.basename(reference_path)
+    return guided
 
 
 async def run_script(script: str, *args):
@@ -507,16 +593,29 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         await log_callback("[System] Extracting vocal melody (Demucs source separation + pitch tracking)...")
         vocal_args = [audio_filepath, final["root"], "--thaat", final["thaat"]]
         evidence_path = None
-        if EVIDENCE_DIR:
-            os.makedirs(EVIDENCE_DIR, exist_ok=True)
+        evidence_root = EVIDENCE_DIR or (tempfile.gettempdir() if REFERENCE_FILE else "")
+        if evidence_root:
+            os.makedirs(evidence_root, exist_ok=True)
             evidence_path = os.path.join(
-                EVIDENCE_DIR,
+                evidence_root,
                 os.path.basename(audio_filepath) + ".evidence.json",
             )
             vocal_args.extend(["--evidence-out", evidence_path])
         melody = await run_script(VOCAL_SCRIPT, *vocal_args)
         if evidence_path and os.path.exists(evidence_path):
             await log_callback(f"[System] Evidence side-channel written: {evidence_path}")
+        if melody and melody.get("melody") and REFERENCE_FILE:
+            try:
+                melody = apply_reference_alignment(
+                    melody, evidence_path, REFERENCE_FILE, root_pc
+                )
+                await log_callback(
+                    f"[System] Reference-conditioned score selected: {len(melody['melody'])} tokens."
+                )
+            except Exception as exc:
+                await log_callback(
+                    f"[System] Reference mode unavailable ({exc}); preserving audio-only score."
+                )
     if not melody or not melody.get("melody"):
         await log_callback("[System] Vocal extraction failed; falling back to Basic-Pitch...")
         melody = await run_script(MELODY_SCRIPT, audio_filepath, final["root"])
@@ -537,11 +636,13 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
 
     scale_notes = scale_notes_for(final["root"], final["thaat"])
 
+    guided_mode = bool(melody.get("reference_alignment"))
+
     # --- Phase C: optional length-proportional LLM review ---
     # The extractor already carries pitch/onset/voicing evidence. The live
     # audit showed that five reviewers preserved the same events while consuming
     # hundreds of thousands of tokens and flooding the UI with JSON/prose.
-    if full_segments and duration > 0 and SECTION_REVIEW_MODE in {"on", "always"}:
+    if full_segments and duration > 0 and SECTION_REVIEW_MODE in {"on", "always"} and not guided_mode:
         n_sections = min(MAX_SECTIONS, max(1, int(duration / TARGET_SECTION_LEN) + (1 if duration % TARGET_SECTION_LEN else 0)))
         section_len = duration / n_sections
         sections = [(i * section_len, min((i + 1) * section_len, duration))
@@ -572,9 +673,10 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         for segs in section_results:
             merged.extend(segs)
     else:
+        reason = "reference-conditioned score" if guided_mode else "extractor evidence"
         await log_callback(
             f"[System] Skipping LLM section review (SARGAM_SECTION_REVIEW={SECTION_REVIEW_MODE or 'off'}); "
-            "preserving extractor evidence for deterministic rendering."
+            f"preserving {reason} for deterministic rendering."
         )
         merged = full_segments
 
@@ -637,6 +739,7 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
                   'out_of_scale_candidate', 'octave_error_candidate',
                   'raw_midi_float', 'cents_deviation', 'pitch_confidence',
                   'voicing_confidence', 'onset_confidence', 'offset_confidence',
+                  'reference_alignment', 'reference_index', 'reference_pitch_class',
                   'attack_energy', 'brightness'):
             if seg.get(f) is not None:
                 entry[f] = seg[f]
@@ -665,10 +768,12 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
             if v is not None:
                 entry["velocity"] = round(float(v), 3)
 
-    # Deduplicate section-boundary duplicates: same midi within 60ms onset.
+    # Deduplicate ordinary section-boundary duplicates only. A guided
+    # reference is already an ordered token stream; repeated same-pitch tokens
+    # must remain explicit retriggers.
     cleaned.sort(key=lambda s: s["start"])
-    deduped = []
-    for seg in cleaned:
+    deduped = list(cleaned) if guided_mode else []
+    for seg in ([] if guided_mode else cleaned):
         m = seg.get("midi")
         if deduped and m is not None and deduped[-1].get("midi") == m                 and abs(seg["start"] - deduped[-1]["start"]) < 0.06:
             # keep the event with higher confidence (or longer), merge flags
@@ -747,6 +852,8 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         "sargam_counts": sargam_counts,
         "transcriber": transcriber,
         "model_threshold": model_threshold,
+        "reference_alignment": bool(melody.get("reference_alignment")),
+        "reference_file": melody.get("reference_file"),
     }
 
     payload = {
@@ -756,6 +863,8 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         "tempo": tempo,
         "transcriber": transcriber,
         "model_threshold": model_threshold,
+        "reference_alignment": bool(melody.get("reference_alignment")),
+        "reference_file": melody.get("reference_file"),
         "chords": chords,
         "melody": melody_out,
     }
