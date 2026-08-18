@@ -139,45 +139,48 @@ def midi_to_note(midi: int):
     return f"{PC_TO_NOTE[midi % 12]}{midi // 12 - 1}"
 
 
+def _reference_tokens(labels, root_pc: int):
+    deg = {'S': 0, 'R': 2, 'G': 4, 'M': 5, 'P': 7, 'D': 9, 'N': 11,
+           'r': 1, 'g': 3, 'm': 6, 'd': 8, 'n': 10}
+    out = []
+    for item in labels:
+        if isinstance(item, str):
+            label, pitch_class, octave_hint = item, None, None
+        else:
+            label = str(item.get('label') or item.get('sargam') or 'S')
+            pitch_class = item.get('pitch_class')
+            octave_hint = item.get('octave_hint')
+        if pitch_class is None:
+            symbol = label[0]
+            if symbol not in deg:
+                raise ValueError(f'Unknown sargam token: {label}')
+            pitch_class = (root_pc + deg[symbol] + (12 if "'" in label else 0)) % 12
+        out.append({'label': label, 'pitch_class': int(pitch_class), 'octave_hint': octave_hint})
+    return out
+
+
 def reference_tokens_from_file(path: str, root_pc: int):
     """Load explicit sargam reference tokens without mutating audio-only mode."""
     with open(path, 'r', encoding='utf-8') as fh:
         data = json.load(fh)
-    tokens = data.get('tokens') if isinstance(data, dict) else data
-    if tokens:
-        out = []
-        for item in tokens:
-            if isinstance(item, str):
-                label = item
-                pitch_class = None
-            else:
-                label = str(item.get('label') or item.get('sargam') or 'S')
-                pitch_class = item.get('pitch_class')
-            if pitch_class is None:
-                deg = {'S': 0, 'R': 2, 'G': 4, 'M': 5, 'P': 7, 'D': 9, 'N': 11,
-                       'r': 1, 'g': 3, 'm': 6, 'd': 8, 'n': 10}
-                symbol = label[0]
-                if symbol not in deg:
-                    raise ValueError(f'Unknown sargam token: {label}')
-                pitch_class = (root_pc + deg[symbol] + (12 if "\'" in label else 0)) % 12
-            out.append({'label': label, 'pitch_class': int(pitch_class),
-                        'octave_hint': item.get('octave_hint') if isinstance(item, dict) else None})
-        return out
-    phrases = data.get('sargam_phrases') if isinstance(data, dict) else None
-    if not phrases:
-        raise ValueError('Reference file must contain tokens or sargam_phrases')
-    deg = {'S': 0, 'R': 2, 'G': 4, 'M': 5, 'P': 7, 'D': 9, 'N': 11,
-           'r': 1, 'g': 3, 'm': 6, 'd': 8, 'n': 10}
-    out = []
-    for phrase in phrases:
-        for label in str(phrase).split():
-            symbol = label[0]
-            if symbol not in deg:
-                raise ValueError(f'Unknown sargam token: {label}')
-            out.append({'label': label,
-                        'pitch_class': int((root_pc + deg[symbol] + (12 if "\'" in label else 0)) % 12),
-                        'octave_hint': None})
-    return out
+    if isinstance(data, list):
+        return _reference_tokens(data, root_pc)
+    if data.get('tokens'):
+        return _reference_tokens(data['tokens'], root_pc)
+    phrases = data.get('sargam_phrases') or []
+    return _reference_tokens(' '.join(phrases).split(), root_pc)
+
+
+def reference_groups_from_file(path: str, root_pc: int):
+    with open(path, 'r', encoding='utf-8') as fh:
+        data = json.load(fh)
+    groups = data.get('phrase_groups') if isinstance(data, dict) else None
+    if not groups:
+        return [(reference_tokens_from_file(path, root_pc), None, None)]
+    return [(_reference_tokens(group.get('tokens') or str(group.get('sargam', '')).split(), root_pc),
+             float(group['start']) if group.get('start') is not None else None,
+             float(group['end']) if group.get('end') is not None else None)
+            for group in groups]
 
 
 def apply_reference_alignment(melody, evidence_path: str, reference_path: str, root_pc: int):
@@ -188,16 +191,33 @@ def apply_reference_alignment(melody, evidence_path: str, reference_path: str, r
     frames = evidence.get('frames') or []
     if not frames:
         raise ValueError('Evidence sidecar has no frames')
-    ref = [ReferenceToken(x['pitch_class'], x['label'], x.get('octave_hint'))
-           for x in reference_tokens_from_file(reference_path, root_pc)]
-    times = [x.get('t', 0.0) for x in frames]
-    midi = [x.get('midi_crepe') for x in frames]
-    voicing = [x.get('periodicity', 0.0) for x in frames]
-    onset = [x.get('onset_strength', 0.0) for x in frames]
-    rms = [x.get('rms', 0.0) for x in frames]
-    aligned = align_reference_to_frames(times, midi, voicing, onset, rms, ref)
-    if len(aligned) != len(ref):
-        raise ValueError(f'Reference alignment emitted {len(aligned)} of {len(ref)} tokens')
+    all_times = [x.get('t', 0.0) for x in frames]
+    all_midi = [x.get('midi_crepe') for x in frames]
+    all_voicing = [x.get('periodicity', 0.0) for x in frames]
+    all_onset = [x.get('onset_strength', 0.0) for x in frames]
+    all_rms = [x.get('rms', 0.0) for x in frames]
+    aligned = []
+    reference_offset = 0
+    for tokens, window_start, window_end in reference_groups_from_file(reference_path, root_pc):
+        ref = [ReferenceToken(x['pitch_class'], x['label'], x.get('octave_hint')) for x in tokens]
+        indices = list(range(len(frames)))
+        if window_start is not None:
+            indices = [i for i in indices if all_times[i] >= window_start]
+        if window_end is not None:
+            indices = [i for i in indices if all_times[i] < window_end]
+        if len(indices) < max(2, len(ref)):
+            raise ValueError(f'Reference window has too few frames for {len(ref)} tokens')
+        local = align_reference_to_frames(
+            [all_times[i] for i in indices], [all_midi[i] for i in indices],
+            [all_voicing[i] for i in indices], [all_onset[i] for i in indices],
+            [all_rms[i] for i in indices], ref
+        )
+        if len(local) != len(ref):
+            raise ValueError(f'Reference alignment emitted {len(local)} of {len(ref)} tokens')
+        for item in local:
+            item['reference_index'] += reference_offset
+        aligned.extend(local)
+        reference_offset += len(ref)
     out = []
     for item in aligned:
         m = int(item['midi'])
