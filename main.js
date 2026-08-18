@@ -191,7 +191,12 @@ window.agentPlayNote = (note, duration = '4n', velocity = 0.8) => {
   // accompaniment as loud as soft melody notes and defeats prominence.
   const v = Math.max(0.015, Math.min(1, velocity || 0.8));
   const id = ++voiceCounter;
-  const durMs = typeof duration === 'number' ? Math.max(40, duration * 1000) : 500;
+  let durMs = 500;
+  if (typeof duration === 'number') {
+    durMs = Math.max(40, duration * 1000);
+  } else {
+    try { durMs = Math.max(40, Tone.Time(duration).toSeconds() * 1000); } catch (err) {}
+  }
   synth.triggerAttackRelease(key, duration, Tone.now(), v);
   uiNoteOn(key, id);
   keyElements[key].style.filter = `brightness(${1 + (v - 0.5) * 0.8})`;
@@ -959,7 +964,8 @@ function renderTranscription(data) {
   summaryThaat.textContent = data.thaat;
   summaryScale.textContent = data.western_scale;
   summaryTempo.textContent = data.tempo ? `${data.tempo} BPM` : '—';
-  const engine = data.transcriber || data.melody.transcriber || 'unknown';
+  const engine = data.transcriber || data.melody.transcriber ||
+    (data.melody.melody || []).find(s => s.source_model)?.source_model || 'unknown';
   summaryTranscriber.textContent = engine === 'rosvot' ? 'ROSVOT' : engine === 'crepe' ? 'CREPE' : engine;
   summaryBox.hidden = false;
 
