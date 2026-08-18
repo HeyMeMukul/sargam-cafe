@@ -18,6 +18,14 @@ python evaluation/benchmark.py /path/to/extracted_melody.json /path/to/reference
 `extracted_melody.json` is the JSON emitted by `backend/vocal_melody.py`
 (e.g. `{"root": "F#", "melody": [{"start":..,"end":..,"midi":..}, ...]}`).
 
+For strict whole-sequence validation, use the ordered evaluator:
+
+```bash
+python evaluation/strict_sequence.py evaluation/references/song.json extracted_melody.json
+```
+
+This aligns the complete reference and estimate in order and reports exact pitch/onset recall, precision, F1, missing events, extra events, pitch mismatches, and mean onset error. It must be preferred over `validate_phrases.py`, whose historical `best_window_acc` is useful for diagnosis but can hide omissions and extra notes by selecting the most favorable local subsequence.
+
 ## Reference annotation format
 A JSON array of notes, one per sung event:
 ```json
