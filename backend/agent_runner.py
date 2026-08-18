@@ -606,7 +606,7 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
 
     # --- Phase B2: dedicated singing-note extraction with safe fallback ---
     melody = None
-    if TRANSCRIBER_MODE in {"auto", "rosvot"}:
+    if TRANSCRIBER_MODE in {"auto", "rosvot"} and not REFERENCE_FILE:
         await log_callback("[System] Trying ROSVOT note-level singing transcription...")
         melody = await run_script(ROSVOT_SCRIPT, audio_filepath, final["root"],
                                   "--thaat", final["thaat"])
@@ -614,6 +614,8 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
             await log_callback(f"[System] ROSVOT extracted {len(melody['melody'])} primary note events.")
         else:
             await log_callback("[System] ROSVOT unavailable or failed; falling back to CREPE note extraction.")
+    if REFERENCE_FILE:
+        await log_callback("[System] Reference mode requires frame evidence; using CREPE extraction path.")
     if not melody or not melody.get("melody"):
         await log_callback("[System] Extracting vocal melody (Demucs source separation + pitch tracking)...")
         vocal_args = [audio_filepath, final["root"], "--thaat", final["thaat"]]
