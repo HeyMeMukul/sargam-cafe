@@ -395,8 +395,14 @@ function phraseTimingOffset(pos, isPeak, isCadence, tempo) {
 // attack_energy (loud attack) and brightness (bright/harsh) from the audio feed
 // the expression formula; never map raw RMS directly.
 function phraseVelocity(baseVel, pos, isPeak, isCadence, tempo, seedRnd, attack, bright) {
-  if (HT_STATE.mode === 'faithful') return baseVel;
+  // Expression is always audible. At the neutral value 0.8 it is unity;
+  // Faithful mode keeps the measured contour but still permits a controlled
+  // master dynamic change instead of making the slider a no-op.
   const exp = HT_STATE.expression;
+  const master = 0.78 + 0.275 * exp;
+  if (HT_STATE.mode === 'faithful') {
+    return Math.max(0.12, Math.min(1, baseVel * master));
+  }
   // phrase envelope: swell toward peak, release at cadence
   let env = 1.0;
   env += 0.18 * Math.sin(Math.min(1, pos) * Math.PI) * exp;   // arch
@@ -422,8 +428,59 @@ function articulationRatio(gapToNext, tempo) {
   return 0.75;                               // separated
 }
 
+// Collapse adjacent same-pitch evidence for playback only. The transcription
+// remains untouched for audit/UI; a held sung vowel should not retrigger the
+// same piano key five times just because a section boundary or onset detector
+// split it into multiple records.
+function collapseHeldMelody(melody) {
+  const out = [];
+  for (const source of melody || []) {
+    const s = { ...source };
+    const prev = out[out.length - 1];
+    const prevMidi = prev?.midi ?? parseNote(prev?.note)?.midi;
+    const midi = s.midi ?? parseNote(s.note)?.midi;
+    const flags = s.review_flags || [];
+    const explicitRetrigger = s.retrigger || flags.includes('possible_rearticulation');
+    const gap = prev ? (Number(s.start) - Number(prev.end)) : Infinity;
+    const attack = Number(s.attack_energy || 0);
+    const prevAttack = Number(prev?.attack_energy || 0);
+    const strongRetrigger = attack > 0.8 || attack > prevAttack + 0.22;
+    if (prev && midi !== undefined && prevMidi === midi && gap <= 0.03 && !explicitRetrigger && !strongRetrigger) {
+      prev.end = Math.max(Number(prev.end), Number(s.end));
+      prev.velocity = Math.max(Number(prev.velocity || 0), Number(s.velocity || 0));
+      prev.attack_energy = Math.max(Number(prev.attack_energy || 0), Number(s.attack_energy || 0));
+      prev.pitch_confidence = Math.max(Number(prev.pitch_confidence || 0), Number(s.pitch_confidence || 0));
+      continue;
+    }
+    out.push(s);
+  }
+  return out;
+}
+
+// Short kan detections are grace evidence, not independent melody notes.
+// Attach them to the following target for optional Song-like rendering and omit
+// the standalone attack in the default Faithful path.
+function collapseRenderOrnaments(melody) {
+  const out = [];
+  for (let i = 0; i < (melody || []).length; i++) {
+    const s = { ...melody[i] };
+    const next = melody[i + 1];
+    const shortKan = s.ornament === 'kan' && (Number(s.end) - Number(s.start)) <= 0.16;
+    const close = next && Number(next.start) - Number(s.end) <= 0.08;
+    if (shortKan && close) {
+      const target = { ...next, graceNote: s.note, graceDuration: Math.min(0.06, Number(s.end) - Number(s.start)) };
+      out.push(target);
+      i += 1;
+      continue;
+    }
+    out.push(s);
+  }
+  return out;
+}
+
 // Compute a full performance plan for the melody notes.
 function buildPerformancePlan(melody, tempo) {
+  melody = collapseRenderOrnaments(collapseHeldMelody(melody));
   const seedRnd = mulberry32(HT_STATE.seed);
   const plan = [];
   const byPhrase = {};
@@ -442,12 +499,14 @@ function buildPerformancePlan(melody, tempo) {
       // never the melody (creates the loudness gap between hands).
       let vel = phraseVelocity(s.velocity || 0.7, pos, isPeak, isCadence, tempo, seedRnd,
                                s.attack_energy, s.brightness);
-      // Confidence gating: low-confidence notes without a strong attack play
-      // quietly so uncertain detections don't cause loud, jarring strikes.
-      if ((s.pitch_confidence !== undefined && s.pitch_confidence < 0.3) &&
-          (s.attack_energy === undefined || s.attack_energy < 0.5)) {
-        vel *= 0.4;
-      }
+      // Rendering gate only: retain uncertain events in the transcript, but do
+      // not turn a very short, weakly voiced pitch-tracker artifact into a full
+      // piano attack. Real notes with strong pitch/voicing evidence still play.
+      const uncertain = (s.pitch_confidence !== undefined && s.pitch_confidence < 0.35) &&
+                        (s.voicing_confidence === undefined || s.voicing_confidence < 0.65);
+      const measuredDur = Math.max(0, Number(s.end) - Number(s.start));
+      const render = !(uncertain && measuredDur < 0.28);
+      if (uncertain) vel *= render ? 0.35 : 0.08;
       // cadence breath: extend release at phrase end
       let dur = s.end - s.start;
       if (isCadence) dur += HT_STATE.breath * (HT_STATE.mode === 'songlike' ? 1 : 0.2);
@@ -464,9 +523,11 @@ function buildPerformancePlan(melody, tempo) {
         performanceEnd: s.end + tOff,
         duration: Math.max(0.08, dur),
         velocity: vel,
+        render,
         articulation: art,
-        phraseId: pid, isPeak, isCadence,
+        phraseId: pid, isPeak, isCadence, sargam: s.sargam,
         ornament: s.ornament, glide_to: s.glide_to, trill: s.trill, sustain: s.sustain,
+        graceNote: s.graceNote, graceDuration: s.graceDuration,
       });
     });
   }
@@ -551,6 +612,26 @@ function scaleNeighbour(midi, dir) {
 function playOrnamentedNote(seg, when, dur, vel) {
   const note = seg.note;
   if (!note || note === '-') return;
+  if (seg.graceNote && HT_STATE.mode === 'songlike') {
+    notationTimers.push(setTimeout(() => {
+      window.agentPlayNote(seg.graceNote, seg.graceDuration || 0.05, vel * 0.35);
+    }, Math.max(0, when * 1000 - 60)));
+    notationTimers.push(setTimeout(() => {
+      window.agentPlayNote(note, dur, vel);
+    }, Math.max(0, when * 1000)));
+    return;
+  }
+  // The extractor’s ornament labels are hypotheses, not guaranteed extra
+  // attacks. Faithful mode renders the measured melody only; Song-like mode
+  // opts into ornament playback. This prevents false kan/gamak/meend labels
+  // from sounding like repeated key tapping in the default path.
+  if (HT_STATE.mode !== 'songlike' && seg.ornament === 'kan') return;
+  if (HT_STATE.mode !== 'songlike' || !seg.ornament) {
+    notationTimers.push(setTimeout(() => {
+      window.agentPlayNote(note, dur, vel);
+    }, Math.max(0, when * 1000)));
+    return;
+  }
   const noteMidi = parseNote(note)?.midi;
   const at = () => when * 1000;
 
@@ -620,7 +701,7 @@ function playNotation(data, opts = {}) {
       const when = c.start;
       const dur = Math.max(0.5, c.end - c.start);
       notationTimers.push(setTimeout(() => {
-        (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, Math.max(0.1, 0.28 - HT_STATE.prominence / 150)));
+        (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, Math.max(0.06, 0.26 - (HT_STATE.prominence / 30) * 0.18)));
       }, when * 1000));
     });
   }
@@ -705,12 +786,16 @@ function setupHumanTouch() {
   const htPreview = document.getElementById('ht-preview');
   if (htPreview) htPreview.onclick = () => {
     if (!performancePlan || !performancePlan.length) return;
+    stopNotationPlayback();
     const minPid = Math.min(...performancePlan.map(p => p.phraseId));
-    performancePlan.filter(p => p.phraseId === minPid).forEach((p, i) => {
+    const phrase = performancePlan.filter(p => p.phraseId === minPid && p.render !== false);
+    const origin = phrase.length ? phrase[0].performanceStart : 0;
+    phrase.forEach(p => {
       if (!p.note || p.note === '-') return;
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         window.agentPlayNote(p.note, p.duration, p.velocity);
-      }, i * 250);
+      }, Math.max(0, (p.performanceStart - origin) * 1000));
+      notationTimers.push(timer);
     });
   };
 }
@@ -842,7 +927,12 @@ function renderTranscription(data) {
   function updateLiveFromTime() {
     if (!transcriptionData) return;
     const t = audioPlayer.currentTime;
-    const mel = transcriptionData.melody.melody || [];
+    const rawMel = transcriptionData.melody.melody || [];
+    const mel = (performancePlan && performancePlan.length)
+      ? performancePlan.filter(p => p.render !== false).map(p => ({
+          start: p.performanceStart, end: p.performanceEnd, note: p.note, sargam: p.sargam || ''
+        }))
+      : rawMel;
     let idx = -1;
     for (let i = 0; i < mel.length; i++) {
       if (t >= mel[i].start && t < mel[i].end) { idx = i; break; }
@@ -866,7 +956,7 @@ function renderTranscription(data) {
     }
     // Chord backing (left hand) synced with the audio
     const ch = transcriptionData.chords || [];
-    if (chordPlayEnabled && ch.length) {
+    if (chordPlayEnabled && ch.length && !withSongSchedulerActive) {
       let ci = -1;
       for (let i = 0; i < ch.length; i++) {
         if (t >= ch[i].start && t < ch[i].end) { ci = i; break; }
@@ -875,7 +965,7 @@ function renderTranscription(data) {
         lastChordIndex = ci;
         const c = ch[ci];
         const dur = Math.max(0.5, c.end - c.start);
-        (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, Math.max(0.1, 0.28 - HT_STATE.prominence / 150)));
+        (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, Math.max(0.06, 0.26 - (HT_STATE.prominence / 30) * 0.18)));
       }
       if (ci === -1 && t > 0) lastChordIndex = -1; // outside all chords -> reset
     }
@@ -894,21 +984,26 @@ function renderTranscription(data) {
   let melTriggered = -1;   // last melody index already fired
   let chordTriggered = -1; // last chord index already fired
   let rafId = null;
+  let withSongSchedulerActive = false;
 
   function stopWithSongScheduler() {
     if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+    withSongSchedulerActive = false;
     melTriggered = -1;
     chordTriggered = -1;
   }
 
   function startWithSongScheduler(melody, chords, wantMelody, wantChords) {
     stopWithSongScheduler();
+    withSongSchedulerActive = true;
     const endsAt = (audioPlayer.duration || 0);
-    const plan = performancePlan; // Human Touch performance plan
     function tick() {
       rafId = requestAnimationFrame(tick);
       const t = audioPlayer.currentTime;
       if (audioPlayer.paused) return;
+      // Read the latest plan every frame so Human Touch slider changes affect
+      // notes that have not fired yet, rather than a stale captured array.
+      const plan = performancePlan;
       // fire melody notes through the Human Touch plan
       if (wantMelody && plan.length) {
         for (let i = melTriggered + 1; i < plan.length; i++) {
@@ -916,7 +1011,7 @@ function renderTranscription(data) {
           if (t >= p.performanceStart) {
             melTriggered = i;
             if (p.note && p.note !== '-') {
-              window.agentPlayNote(p.note, p.duration, p.velocity);
+              if (p.render !== false) window.agentPlayNote(p.note, p.duration, p.velocity);
             }
           } else break;
         }
@@ -928,7 +1023,7 @@ function renderTranscription(data) {
           if (t >= c.start) {
             chordTriggered = i;
             const dur = Math.max(0.5, c.end - c.start);
-            const vel = Math.max(0.1, 0.28 - HT_STATE.prominence / 150);
+            const vel = Math.max(0.06, 0.26 - (HT_STATE.prominence / 30) * 0.18);
             (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, vel));
           } else break;
         }

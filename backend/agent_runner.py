@@ -25,6 +25,8 @@ VENV_PYTHON = os.path.join(BACKEND_DIR, "venv", "bin", "python3")
 EXTRACT_SCRIPT = os.path.join(BACKEND_DIR, "extract_melody.py")
 MELODY_SCRIPT = os.path.join(BACKEND_DIR, "melody_engine.py")
 VOCAL_SCRIPT = os.path.join(BACKEND_DIR, "vocal_melody.py")
+ROSVOT_SCRIPT = os.path.join(BACKEND_DIR, "rosvot_adapter.py")
+TRANSCRIBER_MODE = os.getenv("SARGAM_TRANSCRIBER", "auto").strip().lower()
 CHORD_SCRIPT = os.path.join(BACKEND_DIR, "chord_detection.py")
 KEY_SCRIPT = os.path.join(BACKEND_DIR, "key_detection.py")
 TEST_SCRIPT = os.path.join(BACKEND_DIR, "test_notes.py")
@@ -466,9 +468,19 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
     chords = (chord_data or {}).get("chords") or []
     await log_callback(f"[System] Chords detected: {len(chords)}")
 
-    # --- Phase B2: vocal melody extraction (Demucs + pyin) ---
-    await log_callback("[System] Extracting vocal melody (Demucs source separation + pitch tracking)...")
-    melody = await run_script(VOCAL_SCRIPT, audio_filepath, final["root"],
+    # --- Phase B2: dedicated singing-note extraction with safe fallback ---
+    melody = None
+    if TRANSCRIBER_MODE in {"auto", "rosvot"}:
+        await log_callback("[System] Trying ROSVOT note-level singing transcription...")
+        melody = await run_script(ROSVOT_SCRIPT, audio_filepath, final["root"],
+                                  "--thaat", final["thaat"])
+        if melody and melody.get("melody"):
+            await log_callback(f"[System] ROSVOT extracted {len(melody['melody'])} primary note events.")
+        else:
+            await log_callback("[System] ROSVOT unavailable or failed; falling back to CREPE note extraction.")
+    if not melody or not melody.get("melody"):
+        await log_callback("[System] Extracting vocal melody (Demucs source separation + pitch tracking)...")
+        melody = await run_script(VOCAL_SCRIPT, audio_filepath, final["root"],
                                   "--thaat", final["thaat"])
     if not melody or not melody.get("melody"):
         await log_callback("[System] Vocal extraction failed; falling back to Basic-Pitch...")
@@ -578,6 +590,7 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
                 entry[f] = seg[f]
         # preserve reviewer metadata + raw evidence (audit trail) through merge
         for f in ('review_flags', 'review_reason', 'review_confidence',
+                  'source_model', 'render_role', 'model_threshold',
                   'out_of_scale_candidate', 'octave_error_candidate',
                   'raw_midi_float', 'cents_deviation', 'pitch_confidence',
                   'voicing_confidence', 'onset_confidence', 'offset_confidence',

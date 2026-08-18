@@ -1,0 +1,19 @@
+# Optional dedicated singing-note transcription backend.
+# Install in a separate environment or the backend venv only when
+# SARGAM_TRANSCRIBER=rosvot/auto is enabled.
+pyyaml
+matplotlib
+pandas
+torchmetrics
+mir_eval
+pretty_midi
+pyloudnorm
+scikit-image
+textgrid
+g2p_en
+npy_append_array
+einops
+tqdm
+tensorboardX
+# pyworld is needed by ROSVOT/RMVPE and may require a compiler on Python 3.12.
+pyworld==0.3.4
