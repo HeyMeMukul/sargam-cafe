@@ -304,10 +304,10 @@ async def run_section_subagent(audio_filepath: str, start: float, end: float,
             f"validating {start:.0f}s–{end:.0f}s..."
         )
 
-        # Drive the media player to this section so the piano "plays along"
-        await log_callback(f"__MEDIA__:{json.dumps({'action': 'seek', 'time': round(start, 2)})}")
-        await log_callback(f"__MEDIA__:{json.dumps({'action': 'loop', 'start': round(start, 2), 'end': round(end, 2)})}")
-        await log_callback("__MEDIA__:{\"action\": \"play\"}")
+        # Section reviewers read the uploaded file directly. Do not issue seek/
+        # loop/play commands here: gather() runs reviewers concurrently, so those
+        # media commands race and leave the browser audio in an arbitrary section.
+        # The UI receives one authoritative pause before the final payload instead.
 
         # Beat times within this section (for rhythm validation)
         section_beats = []

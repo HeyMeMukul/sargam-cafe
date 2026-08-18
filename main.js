@@ -106,8 +106,14 @@ function renderPiano() {
       const id = playNote(n.note);
       key.__pt = id; // remember the voice id for this pointer
     });
-    key.addEventListener('pointerup', (e) => { stopNote(n.note); });
-    key.addEventListener('pointercancel', (e) => { stopNote(n.note); });
+    key.addEventListener('pointerup', (e) => {
+      stopNote(n.note, key.__pt);
+      key.__pt = null;
+    });
+    key.addEventListener('pointercancel', (e) => {
+      stopNote(n.note, key.__pt);
+      key.__pt = null;
+    });
     key.addEventListener('pointerleave', () => { /* note held while dragging */ });
 
     keyElements[n.note] = key;
@@ -164,11 +170,13 @@ function playNote(note) {
   }
   return null;
 }
-function stopNote(note) {
+function stopNote(note, voiceId = null) {
   const key = pianoNoteName(note);
-  if (synth && synth.loaded && keyElements[key]) {
-    synth.triggerRelease(key);
-  }
+  if (!synth || !synth.loaded || !keyElements[key]) return;
+  // Release only this pointer's visual voice. Do not release an overlapping
+  // scheduled voice on the same pitch until the final reference disappears.
+  if (voiceId !== null && voiceId !== undefined) uiNoteOff(key, voiceId);
+  if (!activeVoices.has(key)) synth.triggerRelease(key);
 }
 
 // THE single renderer for scheduled/automated playback (solo, with-song,
@@ -301,6 +309,9 @@ let melodyPlayEnabled = false;
 let chordPlayEnabled = false;
 let notationTimers = [];
 let lastChordIndex = -1;
+let transcriptionCleanup = null;
+let soloPlaybackActive = false;
+let soloPlaybackEndTimer = null;
 
 // --- Cost / usage status bar ---
 const sessionStatus = document.getElementById('session-status');
@@ -337,6 +348,11 @@ function setStatus(state) {
 function stopNotationPlayback() {
   notationTimers.forEach(clearTimeout);
   notationTimers = [];
+  if (soloPlaybackEndTimer !== null) {
+    clearTimeout(soloPlaybackEndTimer);
+    soloPlaybackEndTimer = null;
+  }
+  soloPlaybackActive = false;
   allNotesOff();
 }
 
@@ -884,6 +900,12 @@ function updateMidiDiag(key, val) {
 }
 
 function renderTranscription(data) {
+  // A second transcription replaces the previous event handlers and scheduler;
+  // otherwise every subsequent run multiplies timeupdate/chord callbacks.
+  if (transcriptionCleanup) {
+    transcriptionCleanup();
+    transcriptionCleanup = null;
+  }
   summaryRoot.textContent = data.root;
   summaryThaat.textContent = data.thaat;
   summaryScale.textContent = data.western_scale;
@@ -1004,8 +1026,12 @@ function renderTranscription(data) {
       // Read the latest plan every frame so Human Touch slider changes affect
       // notes that have not fired yet, rather than a stale captured array.
       const plan = performancePlan;
+      // Read the current layer toggles every frame so clicking CHORDS or
+      // MELODY during With Song playback takes effect immediately.
+      const currentWantMelody = layerMelodyBtn.classList.contains('active');
+      const currentWantChords = layerChordsBtn.classList.contains('active');
       // fire melody notes through the Human Touch plan
-      if (wantMelody && plan.length) {
+      if (currentWantMelody && plan.length) {
         for (let i = melTriggered + 1; i < plan.length; i++) {
           const p = plan[i];
           if (t >= p.performanceStart) {
@@ -1017,7 +1043,7 @@ function renderTranscription(data) {
         }
       }
       // fire chord changes once (left hand, softer than melody)
-      if (wantChords && chords.length) {
+      if (currentWantChords && chords.length) {
         for (let i = chordTriggered + 1; i < chords.length; i++) {
           const c = chords[i];
           if (t >= c.start) {
@@ -1035,14 +1061,21 @@ function renderTranscription(data) {
 
   audioPlayer.addEventListener('timeupdate', updateLiveFromTime);
   audioPlayer.addEventListener('pause', stopWithSongScheduler);
+  transcriptionCleanup = () => {
+    audioPlayer.removeEventListener('timeupdate', updateLiveFromTime);
+    audioPlayer.removeEventListener('pause', stopWithSongScheduler);
+    stopWithSongScheduler();
+  };
   updateLiveFromTime();
 
   // Layer toggles: Chords / Melody / With Song
   layerChordsBtn.onclick = () => {
     layerChordsBtn.classList.toggle('active');
+    chordPlayEnabled = layerChordsBtn.classList.contains('active');
   };
   layerMelodyBtn.onclick = () => {
     layerMelodyBtn.classList.toggle('active');
+    melodyPlayEnabled = layerMelodyBtn.classList.contains('active');
   };
   layerSongBtn.onclick = () => {
     layerSongBtn.classList.toggle('active');
@@ -1260,12 +1293,15 @@ simBtn.addEventListener('click', () => {
     const events = solo.events || [];
     if (!events.length) return;
     // Use the Human Touch performance plan (phrase-aware timing/velocity/pedal)
-    // when available, else fall back to the raw __SOLO__ events.
+    // when available, but convert its absolute source times back to a relative
+    // solo timeline. The backend __SOLO__ contract starts at zero.
     let evList = events;
     if (performancePlan && performancePlan.length) {
+      const origin = performancePlan[0].performanceStart;
       evList = performancePlan.map(p => ({
-        note: p.note, start: p.performanceStart, duration: p.duration,
+        note: p.note, start: p.performanceStart - origin, duration: p.duration,
         velocity: p.velocity, ornament: p.ornament, glide_to: p.glide_to, trill: p.trill,
+        render: p.render,
       }));
     }
     const base = Tone.now() + 0.15; // small lead-in so Tone's look-ahead is stable
@@ -1277,6 +1313,7 @@ simBtn.addEventListener('click', () => {
       const dur = Math.max(0.05, ev.duration || 0.5);
       const vel = ev.velocity || 0.8;
       // ornamented scheduling: meend run / trill / kan before or around the note
+      if (ev.render === false) return;
       notationTimers.push(setTimeout(() => {
         if (ev.ornament === 'meend' && ev.glide_to && parseNote(note)?.midi) {
           const from = ev.glide_to;
@@ -1308,6 +1345,14 @@ simBtn.addEventListener('click', () => {
         scheduleToneNote(note, dur, vel);
       }, (startAt - Tone.now()) * 1000));
     });
+    soloPlaybackActive = evList.length > 0;
+    if (soloPlaybackActive) {
+      const total = Math.max(0, ...evList.map(ev => Number(ev.start || 0) + Number(ev.duration || 0)));
+      soloPlaybackEndTimer = setTimeout(() => {
+        soloPlaybackActive = false;
+        soloPlaybackEndTimer = null;
+      }, (total + 0.25) * 1000);
+    }
   }
 
   // Schedule a single note with Tone.js at the current audio clock (look-ahead).
@@ -1385,7 +1430,9 @@ simBtn.addEventListener('click', () => {
   
   ws.onclose = () => {
     logBox.innerHTML += `<br>> [System] Connection closed.`;
-    stopNotationPlayback();          // all-notes-off + clear timers
+    // The websocket closes immediately after sending the batched solo. Do not
+    // cancel that scheduled performance merely because transport is complete.
+    if (!soloPlaybackActive) stopNotationPlayback();
     melodyPlayEnabled = false;
     chordPlayEnabled = false;
     simBtn.disabled = false;

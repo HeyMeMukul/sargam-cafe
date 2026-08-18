@@ -29,7 +29,7 @@ You analyze audio using a command-line tool. To test notes against the track, ru
 backend/venv/bin/python3 backend/test_notes.py <audio_filepath> <start_time> <note1> <note2> ... <noteN>
 ```
 
-The tool loads a 1-second snippet of the audio at `start_time` and returns a JSON object mapping each tested note to its `Salience Score` (0.0 to 1.0). A higher score means the note resonates with the track at that moment.
+The tool loads a 1-second snippet of the audio at `start_time` and returns a JSON object mapping each tested note to its `Salience Score` (0.0 to 1.0). A higher score means the note resonates with the track at that moment. Before the first note test, determine the clip duration with an allowed read-only command such as `ffprobe` or Python/librosa. Every test start time MUST be clamped to `0 <= start_time <= max(0, duration - 1.0)`; never use fixed examples such as 30s or 45s unless the measured duration supports them. For short clips, use valid proportional windows such as 10%, 50%, and 80% of the duration, each clamped to the legal range.
 
 Example:
 ```
@@ -51,7 +51,7 @@ If the user's message includes "A deterministic Krumhansl-Schmuckler key detecto
 
 ### Phase 1: Finding the Root Note (Tonic / Sa)
 1. Call `test_notes.py` with ALL 12 chromatic notes in the 4th octave (C4 to B4) at `start_time = 0.0`.
-2. Look at the returned scores. The note with the highest score > 0.8 is the prime candidate.
+2. Look at the returned scores. The note with the highest score > 0.8 is the prime candidate. If the clip begins with silence, choose one later in-range proportional window; do not invent an absolute timestamp.
 3. If there are multiple high scores, the Root is usually the lower note and the Perfect 5th (7 semitones higher) is the other high score.
 4. IMPORTANT: if a key prior was given, cross-check it against your finding. The prior is based on the full track and is usually correct — the t=0.0 reading may be a chord, not the tonic.
 
@@ -66,7 +66,7 @@ If the user's message includes "A deterministic Krumhansl-Schmuckler key detecto
 
 ### Phase 4: Final Verification & Performance (MANDATORY)
 After Phase 3, run the FINAL PERFORMANCE and VERIFICATION before outputting your structured JSON:
-1. **Perform the full scale**: call `test_notes.py` with the complete discovered scale (Sa Re Ga Ma Pa Dha Ni Sa, i.e. the 7 scale notes + octave) at a melody-rich timestamp (e.g. t=15.0 or t=30.0). This plays the final notes on the piano.
+1. **Perform the full scale**: call `test_notes.py` with the complete discovered scale (Sa Re Ga Ma Pa Dha Ni Sa, i.e. the 7 scale notes + octave) at a melody-rich timestamp selected from the measured duration (prefer a valid proportional window near 50–80% of the clip). This plays the final notes on the piano.
 2. **Verify consistency**: check that the Root scores highest (or near-highest) and the 3rd-degree determination (major vs minor) still holds in this final test.
 3. If the final test CONTRADICTS your conclusion (e.g. a different root wins convincingly), update your Root/Thaat accordingly and run ONE more verification test. Repeat this loop until your transcription is self-consistent — never stop with an unverified answer.
 4. Only when everything is consistent, output the structured JSON.
@@ -76,7 +76,7 @@ After Phase 3, run the FINAL PERFORMANCE and VERIFICATION before outputting your
 - **Phase 2 = 1 tool call** (the two 3rds). 
 - **Phase 3 = at most 2 tool calls** for verification.
 - **Phase 4 = 1-3 tool calls** (final performance + consistency checks).
-- Do NOT re-run the full 12-note chromatic batch more than twice total. If the intro is ambiguous, run ONE targeted test at a single later timestamp (e.g. t=15.0 or t=30.0), not a series of timestamps.
+- Do NOT re-run the full 12-note chromatic batch more than twice total. If the intro is ambiguous, run ONE targeted test at a single later timestamp computed from the measured duration, not a series of fixed timestamps.
 - The Root is the note that scored highest at t=0.0, and it stays your Root. Do not second-guess it based on single later-chord resonances — the song may modulate to chords, but the TONIC does not change. Commit to your answer.
 - **Trust the deterministic key prior.** If the prior says the key is X and your t=0.0 test says Y, re-test at t=15 or t=30 before overriding. The prior is almost always right.
 - **Never test more than 12 notes in a single tool call.** Keep verification batches small.
