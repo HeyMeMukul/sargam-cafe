@@ -27,6 +27,8 @@ MELODY_SCRIPT = os.path.join(BACKEND_DIR, "melody_engine.py")
 VOCAL_SCRIPT = os.path.join(BACKEND_DIR, "vocal_melody.py")
 ROSVOT_SCRIPT = os.path.join(BACKEND_DIR, "rosvot_adapter.py")
 TRANSCRIBER_MODE = os.getenv("SARGAM_TRANSCRIBER", "auto").strip().lower()
+KEY_AGENT_MODE = os.getenv("SARGAM_KEY_AGENT", "auto").strip().lower()
+KEY_AGENT_MIN_CONF = float(os.getenv("SARGAM_KEY_AGENT_MIN_CONF", "0.65"))
 CHORD_SCRIPT = os.path.join(BACKEND_DIR, "chord_detection.py")
 KEY_SCRIPT = os.path.join(BACKEND_DIR, "key_detection.py")
 TEST_SCRIPT = os.path.join(BACKEND_DIR, "test_notes.py")
@@ -44,6 +46,7 @@ SECTION_MODEL = "opencode/deepseek-v4-flash-free"
 TARGET_SECTION_LEN = 6.0    # aim for ~6s per subagent section
 MAX_SECTIONS = 32           # upper bound on parallel sections
 MAX_CONCURRENCY = 10        # subagents running at once
+SECTION_REVIEW_MODE = os.getenv("SARGAM_SECTION_REVIEW", "off").strip().lower()
 
 # Matches note names like C4, C#4, D#5, F#3, B2 inside a bash command
 NOTE_RE = re.compile(r"\b([A-G](?:#|b)?[0-9])\b")
@@ -417,46 +420,66 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         key_cmd += ["--melodic-duration-json", pc_file]
     key = await run_script(*key_cmd)
 
-    # Feed the deterministic key as a strong prior to the agent
-    key_hint = ""
+    # The deterministic detector is cheap, repeatable and already analyzes the
+    # whole track. For a confident result, do not launch the expensive hit-and-
+    # trial LLM: it adds hundreds of thousands of tokens, emits raw chatter, and
+    # can waste time on invalid paths/timestamps without improving note extraction.
+    key_conf = float(key.get("confidence") or 0.0) if key else 0.0
+    use_key_directly = bool(
+        key and key.get("root") and
+        KEY_AGENT_MODE != "always" and
+        (KEY_AGENT_MODE == "never" or key_conf >= KEY_AGENT_MIN_CONF)
+    )
     if key and key.get("root"):
-        key_hint = (
-            f"\n\nIMPORTANT: A deterministic Krumhansl-Schmuckler key detector "
-            f"(analyzing the WHOLE track's harmonic content) determined the key is "
-            f"{key['root']} {key['mode']} (thaat {key['thaat']}, confidence "
-            f"{key.get('confidence', '?')}). Treat this as a STRONG PRIOR. "
-            f"Verify it with your hit-and-trial tests, but only override it if your "
-            f"tests CONTRADICT it decisively across multiple timestamps."
-        )
         await log_callback(
             f"[System] Key detector: {key['root']} {key['mode']} "
             f"(thaat {key['thaat']}, conf {key.get('confidence', '?')})"
         )
 
-    cmd = [
-        "opencode", "run",
-        "--agent", AGENT_NAME,
-        "--model", MODEL,
-        "--format", "json",
-        "--log-level", "ERROR",
-        "--auto",
-        f"Transcribe this track: {audio_filepath}{key_hint}",
-    ]
-
-    agent_text = await run_agent_stream(cmd, log_callback, cost_tracker=cost_tracker)
-    final = parse_final_json(agent_text or "")
-    if not final:
-        # Fall back to the deterministic detector's answer
+    final = None
+    if use_key_directly:
+        final = {
+            "root": key["root"],
+            "thaat": key["thaat"],
+            "western_scale": key["western_scale"],
+        }
+        await log_callback(
+            f"[System] Deterministic key accepted at confidence {key_conf:.3f}; "
+            "skipping hit-and-trial key agent."
+        )
+    else:
+        key_hint = ""
         if key and key.get("root"):
+            key_hint = (
+                f"\n\nIMPORTANT: Use this exact absolute audio path verbatim in every "
+                f"command: {audio_filepath}\n"
+                f"A deterministic Krumhansl-Schmuckler key detector analyzing the "
+                f"whole track determined {key['root']} {key['mode']} (thaat "
+                f"{key['thaat']}, confidence {key.get('confidence', '?')}). "
+                "Treat it as a strong prior and override only with decisive, "
+                "multi-window contradictory evidence."
+            )
+        cmd = [
+            "opencode", "run",
+            "--agent", AGENT_NAME,
+            "--model", MODEL,
+            "--format", "json",
+            "--log-level", "ERROR",
+            "--auto",
+            f"Transcribe this track using the exact path above: {audio_filepath}{key_hint}",
+        ]
+        agent_text = await run_agent_stream(cmd, log_callback, cost_tracker=cost_tracker)
+        final = parse_final_json(agent_text or "")
+        if not final and key and key.get("root"):
             await log_callback("[System] Agent produced no output; using key detector result.")
             final = {
                 "root": key["root"],
                 "thaat": key["thaat"],
                 "western_scale": key["western_scale"],
             }
-        else:
-            await log_callback("[System] Agent finished without structured output.")
-            return
+    if not final:
+        await log_callback("[System] Agent finished without structured output.")
+        return
 
     await log_callback(f"[System] Root discovered: {final['root']} | Thaat: {final['thaat']}")
     root_pc = normalize_root(final["root"])
@@ -502,8 +525,11 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
 
     scale_notes = scale_notes_for(final["root"], final["thaat"])
 
-    # --- Phase C: length-proportional sections + validation subagents ---
-    if full_segments and duration > 0:
+    # --- Phase C: optional length-proportional LLM review ---
+    # The extractor already carries pitch/onset/voicing evidence. The live
+    # audit showed that five reviewers preserved the same events while consuming
+    # hundreds of thousands of tokens and flooding the UI with JSON/prose.
+    if full_segments and duration > 0 and SECTION_REVIEW_MODE in {"on", "always"}:
         n_sections = min(MAX_SECTIONS, max(1, int(duration / TARGET_SECTION_LEN) + (1 if duration % TARGET_SECTION_LEN else 0)))
         section_len = duration / n_sections
         sections = [(i * section_len, min((i + 1) * section_len, duration))
@@ -534,6 +560,10 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         for segs in section_results:
             merged.extend(segs)
     else:
+        await log_callback(
+            f"[System] Skipping LLM section review (SARGAM_SECTION_REVIEW={SECTION_REVIEW_MODE or 'off'}); "
+            "preserving extractor evidence for deterministic rendering."
+        )
         merged = full_segments
 
     # Stop looping the player
@@ -689,6 +719,11 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
     for seg in final_cleaned:
         sargam_counts[seg["sargam"]] = sargam_counts.get(seg["sargam"], 0) + 1
 
+    transcriber = melody.get("transcriber") or next(
+        (seg.get("source_model") for seg in final_cleaned if seg.get("source_model")),
+        "crepe",
+    )
+    model_threshold = melody.get("model_threshold")
     melody_out = {
         "root": PC_TO_NOTE[root_pc],
         "root_note": f"{final['root']}4",
@@ -697,6 +732,8 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         "beats": beats,
         "melody": final_cleaned,
         "sargam_counts": sargam_counts,
+        "transcriber": transcriber,
+        "model_threshold": model_threshold,
     }
 
     payload = {
@@ -704,6 +741,8 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         "thaat": final["thaat"],
         "western_scale": final["western_scale"],
         "tempo": tempo,
+        "transcriber": transcriber,
+        "model_threshold": model_threshold,
         "chords": chords,
         "melody": melody_out,
     }

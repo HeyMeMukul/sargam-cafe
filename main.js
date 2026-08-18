@@ -187,7 +187,9 @@ window.agentPlayNote = (note, duration = '4n', velocity = 0.8) => {
   if (!/[0-9]$/.test(note)) full = `${note}4`;
   const key = pianoNoteName(full);
   if (!keyElements[key]) return;
-  const v = Math.max(0.2, Math.min(1, velocity || 0.8));
+  // Preserve the lower dynamic range: a 0.2 floor makes quiet left-hand
+  // accompaniment as loud as soft melody notes and defeats prominence.
+  const v = Math.max(0.04, Math.min(1, velocity || 0.8));
   const id = ++voiceCounter;
   const durMs = typeof duration === 'number' ? Math.max(40, duration * 1000) : 500;
   synth.triggerAttackRelease(key, duration, Tone.now(), v);
@@ -216,6 +218,8 @@ const progressBar = document.getElementById('progress-bar');
 const currentTimeDisplay = document.getElementById('current-time');
 const totalTimeDisplay = document.getElementById('total-time');
 const volumeSlider = document.getElementById('volume-slider');
+// Keep the media element and the visible slider synchronized from first load.
+audioPlayer.volume = Math.max(0, Math.min(1, Number(volumeSlider.value || 0.8)));
 
 // Auto-init synth on first click anywhere (browser policy)
 document.body.addEventListener('click', () => {
@@ -293,6 +297,7 @@ const summaryRoot = document.getElementById('summary-root');
 const summaryThaat = document.getElementById('summary-thaat');
 const summaryScale = document.getElementById('summary-scale');
 const summaryTempo = document.getElementById('summary-tempo');
+const summaryTranscriber = document.getElementById('summary-transcriber');
 const sargamStrip = document.getElementById('sargam-strip');
 const liveSargam = document.getElementById('live-sargam');
 const liveNote = document.getElementById('live-note');
@@ -460,7 +465,10 @@ function collapseHeldMelody(melody) {
     const gap = prev ? (Number(s.start) - Number(prev.end)) : Infinity;
     const attack = Number(s.attack_energy || 0);
     const prevAttack = Number(prev?.attack_energy || 0);
-    const strongRetrigger = attack > 0.8 || attack > prevAttack + 0.22;
+    // A zero-gap tracker split is normally one sung hold. Preserve a real
+    // retrigger only when it has an explicit flag, a very strong attack, or a
+    // separated onset; this prevents long vowels from sounding like tapping.
+    const strongRetrigger = attack >= 0.9 || (gap > 0.02 && attack > prevAttack + 0.35);
     if (prev && midi !== undefined && prevMidi === midi && gap <= 0.03 && !explicitRetrigger && !strongRetrigger) {
       prev.end = Math.max(Number(prev.end), Number(s.end));
       prev.velocity = Math.max(Number(prev.velocity || 0), Number(s.velocity || 0));
@@ -627,7 +635,7 @@ function scaleNeighbour(midi, dir) {
 // - kan : a short SCALE-AWARE grace note just before the main note
 function playOrnamentedNote(seg, when, dur, vel) {
   const note = seg.note;
-  if (!note || note === '-') return;
+  if (!note || note === '-' || seg.render === false) return;
   if (seg.graceNote && HT_STATE.mode === 'songlike') {
     notationTimers.push(setTimeout(() => {
       window.agentPlayNote(seg.graceNote, seg.graceDuration || 0.05, vel * 0.35);
@@ -651,22 +659,21 @@ function playOrnamentedNote(seg, when, dur, vel) {
   const noteMidi = parseNote(note)?.midi;
   const at = () => when * 1000;
 
-  if (seg.ornament === 'meend' && seg.glide_to && noteMidi) {
-    // Meend: a fast, quiet scale-step run ending ON the target. The main note
-    // is the FINAL step of the run (scheduled after it), never simultaneous.
-    const from = seg.glide_to;
-    const steps = Math.abs(from - noteMidi);
-    if (steps >= 2 && steps <= 12) {
-      const dir = Math.sign(noteMidi - from);
+  if (seg.ornament === 'meend' && seg.glide_to !== undefined && noteMidi) {
+    // vocal_melody.py defines glide_to as the pitch-curve destination. Travel
+    // from the measured note toward that destination; do not reverse it.
+    const targetMidi = Number(seg.glide_to);
+    const steps = Math.abs(targetMidi - noteMidi);
+    if (Number.isFinite(targetMidi) && steps >= 1 && steps <= 12) {
+      const dir = Math.sign(targetMidi - noteMidi);
       const passDur = Math.max(0.04, dur / (steps + 1));
-      for (let s = 1; s <= steps; s++) {
-        const passMidi = from + dir * s;
+      for (let s = 0; s <= steps; s++) {
+        const passMidi = noteMidi + dir * s;
         const passNote = midiToNote(passMidi);
-        // quiet grace notes (last step = the real note at full velocity)
         const isLast = (s === steps);
         notationTimers.push(setTimeout(() => {
-          window.agentPlayNote(passNote, passDur, isLast ? vel : 0.3);
-        }, at() + (s - 1) * passDur * 1000));
+          window.agentPlayNote(passNote, passDur, isLast ? vel : vel * 0.3);
+        }, at() + s * passDur * 1000));
       }
     } else {
       notationTimers.push(setTimeout(() => {
@@ -717,7 +724,7 @@ function playNotation(data, opts = {}) {
       const when = c.start;
       const dur = Math.max(0.5, c.end - c.start);
       notationTimers.push(setTimeout(() => {
-        (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, Math.max(0.06, 0.26 - (HT_STATE.prominence / 30) * 0.18)));
+        (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, Math.max(0.04, 0.22 - (HT_STATE.prominence / 30) * 0.17)));
       }, when * 1000));
     });
   }
@@ -736,7 +743,10 @@ function playNotation(data, opts = {}) {
   let prev = 0;
   plan.forEach((p) => {
     t += Math.max(0, p.performanceStart - prev);
-    const seg = { note: p.note, ornament: p.ornament, glide_to: p.glide_to, trill: p.trill };
+    const seg = {
+      note: p.note, ornament: p.ornament, glide_to: p.glide_to, trill: p.trill,
+      graceNote: p.graceNote, graceDuration: p.graceDuration, render: p.render,
+    };
     playOrnamentedNote(seg, t, p.duration, p.velocity);
     t += p.duration;
     prev = p.performanceStart + p.duration;
@@ -910,16 +920,25 @@ function renderTranscription(data) {
   summaryThaat.textContent = data.thaat;
   summaryScale.textContent = data.western_scale;
   summaryTempo.textContent = data.tempo ? `${data.tempo} BPM` : '—';
+  const engine = data.transcriber || data.melody.transcriber || 'unknown';
+  summaryTranscriber.textContent = engine === 'rosvot' ? 'ROSVOT' : engine === 'crepe' ? 'CREPE' : engine;
   summaryBox.hidden = false;
 
   // Sargam strip
   const counts = data.melody.sargam_counts || {};
   sargamStrip.innerHTML = '';
+  const chipLabels = {
+    Sa: 'Sa', re: 're♭', Re: 'Re', ga: 'ga♭', Ga: 'Ga',
+    Ma: 'Ma', ma: 'ma♯', Pa: 'Pa', dha: 'dha♭', Dha: 'Dha',
+    ni: 'ni♭', Ni: 'Ni', other: 'chromatic',
+  };
   const present = SARGAM_ORDER.filter(s => counts[s] > 0);
+  if (counts.other > 0) present.push('other');
   (present.length ? present : ['Sa']).forEach(s => {
     const chip = document.createElement('span');
     chip.className = 'sargam-chip' + (s === 'Sa' ? ' highlight' : '');
-    chip.textContent = s;
+    chip.textContent = chipLabels[s] || s;
+    chip.title = `${counts[s] || 0} event${counts[s] === 1 ? '' : 's'}`;
     chip.dataset.sargam = s;
     sargamStrip.appendChild(chip);
   });
@@ -987,7 +1006,7 @@ function renderTranscription(data) {
         lastChordIndex = ci;
         const c = ch[ci];
         const dur = Math.max(0.5, c.end - c.start);
-        (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, Math.max(0.06, 0.26 - (HT_STATE.prominence / 30) * 0.18)));
+        (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, Math.max(0.04, 0.22 - (HT_STATE.prominence / 30) * 0.17)));
       }
       if (ci === -1 && t > 0) lastChordIndex = -1; // outside all chords -> reset
     }
@@ -1049,7 +1068,7 @@ function renderTranscription(data) {
           if (t >= c.start) {
             chordTriggered = i;
             const dur = Math.max(0.5, c.end - c.start);
-            const vel = Math.max(0.06, 0.26 - (HT_STATE.prominence / 30) * 0.18);
+            const vel = Math.max(0.04, 0.22 - (HT_STATE.prominence / 30) * 0.17);
             (c.midis || []).forEach(m => window.agentPlayNote(midiToNote(m), dur, vel));
           } else break;
         }
@@ -1292,66 +1311,35 @@ simBtn.addEventListener('click', () => {
     stopNotationPlayback();
     const events = solo.events || [];
     if (!events.length) return;
-    // Use the Human Touch performance plan (phrase-aware timing/velocity/pedal)
-    // when available, but convert its absolute source times back to a relative
-    // solo timeline. The backend __SOLO__ contract starts at zero.
+    // Use the same Human Touch renderer as standalone playback. The backend
+    // contract is relative to zero; the performance plan is source-absolute,
+    // so normalize it once and add a small lead-in for browser scheduling.
     let evList = events;
     if (performancePlan && performancePlan.length) {
       const origin = performancePlan[0].performanceStart;
       evList = performancePlan.map(p => ({
         note: p.note, start: p.performanceStart - origin, duration: p.duration,
-        velocity: p.velocity, ornament: p.ornament, glide_to: p.glide_to, trill: p.trill,
+        velocity: p.velocity, ornament: p.ornament, glide_to: p.glide_to,
+        trill: p.trill, graceNote: p.graceNote, graceDuration: p.graceDuration,
         render: p.render,
       }));
     }
-    const base = Tone.now() + 0.15; // small lead-in so Tone's look-ahead is stable
-    // Schedule each event at base + start (seconds), with true duration.
     evList.forEach(ev => {
-      const note = ev.note;
-      if (!note || note === '-') return;
-      const startAt = base + (ev.start || 0);
-      const dur = Math.max(0.05, ev.duration || 0.5);
-      const vel = ev.velocity || 0.8;
-      // ornamented scheduling: meend run / trill / kan before or around the note
-      if (ev.render === false) return;
-      notationTimers.push(setTimeout(() => {
-        if (ev.ornament === 'meend' && ev.glide_to && parseNote(note)?.midi) {
-          const from = ev.glide_to;
-          const noteMidi = parseNote(note).midi;
-          const steps = Math.abs(from - noteMidi);
-          if (steps >= 2 && steps <= 12) {
-            const dir = Math.sign(noteMidi - from);
-            const passDur = Math.max(0.04, dur / (steps + 1));
-            for (let s = 1; s <= steps; s++) {
-              const passMidi = from + dir * s;
-              const isLast = (s === steps);
-              scheduleToneNote(midiToNote(passMidi), passDur, isLast ? vel : 0.3);
-            }
-            return;
-          }
-        }
-        if (ev.trill && parseNote(note)?.midi) {
-          const noteMidi = parseNote(note).midi;
-          const neighbor = scaleNeighbour(noteMidi, 1);
-          const trillDur = Math.min(0.22, dur / 2);
-          let t = 0;
-          while (t < dur) {
-            const m = (Math.floor(t / trillDur) % 2 === 0) ? note : midiToNote(neighbor);
-            scheduleToneNote(m, trillDur * 0.8, vel * 0.8);
-            t += trillDur;
-          }
-          return;
-        }
-        scheduleToneNote(note, dur, vel);
-      }, (startAt - Tone.now()) * 1000));
+      if (!ev.note || ev.note === '-' || ev.render === false) return;
+      playOrnamentedNote(
+        ev,
+        0.15 + Number(ev.start || 0),
+        Math.max(0.05, Number(ev.duration || 0.5)),
+        Number(ev.velocity || 0.8),
+      );
     });
-    soloPlaybackActive = evList.length > 0;
+    soloPlaybackActive = evList.some(ev => ev.render !== false);
     if (soloPlaybackActive) {
       const total = Math.max(0, ...evList.map(ev => Number(ev.start || 0) + Number(ev.duration || 0)));
       soloPlaybackEndTimer = setTimeout(() => {
         soloPlaybackActive = false;
         soloPlaybackEndTimer = null;
-      }, (total + 0.25) * 1000);
+      }, (total + 0.5) * 1000);
     }
   }
 
@@ -1360,7 +1348,7 @@ simBtn.addEventListener('click', () => {
     if (!synth || !synth.loaded) return;
     const key = pianoNoteName(note);
     if (!keyElements[key]) return;
-    const v = Math.max(0.2, Math.min(1, vel || 0.8));
+    const v = Math.max(0.04, Math.min(1, vel || 0.8));
     synth.triggerAttackRelease(key, Math.max(0.05, dur), Tone.now(), v);
     keyElements[key].classList.add('active');
     setTimeout(() => {
