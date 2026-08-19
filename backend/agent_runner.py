@@ -26,6 +26,13 @@ EXTRACT_SCRIPT = os.path.join(BACKEND_DIR, "extract_melody.py")
 MELODY_SCRIPT = os.path.join(BACKEND_DIR, "melody_engine.py")
 VOCAL_SCRIPT = os.path.join(BACKEND_DIR, "vocal_melody.py")
 ROSVOT_SCRIPT = os.path.join(BACKEND_DIR, "rosvot_adapter.py")
+ROSVOT_DIR = os.getenv("SARGAM_ROSVOT_DIR", os.path.join(PROJECT_ROOT, "third_party", "ROSVOT"))
+ROSVOT_CKPT_DIR = os.getenv("SARGAM_ROSVOT_CKPT_DIR", os.path.join(ROSVOT_DIR, "checkpoints"))
+ROSVOT_READY = (
+    os.path.isdir(ROSVOT_DIR)
+    and os.path.isfile(os.path.join(ROSVOT_CKPT_DIR, "rosvot", "model.pt"))
+    and os.path.isfile(os.path.join(ROSVOT_CKPT_DIR, "rwbd", "model.pt"))
+)
 TRANSCRIBER_MODE = os.getenv("SARGAM_TRANSCRIBER", "auto").strip().lower()
 KEY_AGENT_MODE = os.getenv("SARGAM_KEY_AGENT", "auto").strip().lower()
 KEY_AGENT_MIN_CONF = float(os.getenv("SARGAM_KEY_AGENT_MIN_CONF", "0.65"))
@@ -518,7 +525,8 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         f"[System] Runtime config: transcriber={TRANSCRIBER_MODE or 'auto'}, "
         f"key_agent={KEY_AGENT_MODE or 'auto'}, section_review={SECTION_REVIEW_MODE or 'off'}, "
         f"reference={'on' if REFERENCE_FILE else 'off'}, "
-        f"decoder=chromatic_bridge_{CHROMATIC_BRIDGE_MODE or 'on'}"
+        f"decoder=chromatic_bridge_{CHROMATIC_BRIDGE_MODE or 'on'}, "
+        f"rosvot={'ready' if ROSVOT_READY else 'unavailable'}"
     )
     cost_tracker = CostTracker()
 
