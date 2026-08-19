@@ -33,6 +33,11 @@ class ToolRegistry:
         if handler is not None:
             self._handlers[spec.name] = handler
 
+    def bind(self, name: str, handler: Callable[..., Any]) -> None:
+        if name not in self._specs:
+            raise ValueError(f"cannot bind unknown tool: {name}")
+        self._handlers[name] = handler
+
     def describe(self) -> list[dict[str, Any]]:
         return [
             {

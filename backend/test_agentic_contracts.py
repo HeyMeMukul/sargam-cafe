@@ -4,6 +4,7 @@ from pathlib import Path
 from agentic.contracts import AgentTrace, EvidenceRef, HypothesisVersion, NoteCandidate, ToolCall
 from agentic.skill_registry import SkillRegistry
 from agentic.tool_registry import default_registry
+from agentic.runtime_tools import build_runtime_registry
 
 
 ref = EvidenceRef('inspect_pitch_window', 'pitch-1', 'midi_crepe', 1.0, 1.5, 0.91, 'stable pitch')
@@ -32,4 +33,7 @@ except ValueError:
     pass
 else:
     raise AssertionError('unknown tool argument was not rejected')
+runtime = build_runtime_registry()
+manifest = runtime.call('get_track_manifest', audio_path='/home/ubuntu/upload/tum-se-hi-jab-we-met-128-kbps-t6kdsjrq_xbStSoS0.mp3')
+assert manifest['duration'] > 29
 print('agentic contracts passed')
