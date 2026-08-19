@@ -43,6 +43,14 @@ def _parse_last_json(text: str) -> Any:
         values.append(value)
     if not values:
         raise RuntimeError("audio tool produced no JSON result")
+    # The extractor payload contains nested note dictionaries. Prefer the
+    # outer full melody object over the last nested object in stdout.
+    melody_values = [
+        value for value in values
+        if isinstance(value, dict) and isinstance(value.get("melody"), list)
+    ]
+    if melody_values:
+        return melody_values[-1]
     return values[-1]
 
 
@@ -108,14 +116,27 @@ def get_note_candidates(
     # Some evidence artifacts contain only frames; derive coarse candidates from
     # the production extractor once and cache them beside the evidence.
     candidate_path = evidence_path.with_name("production.melody.json")
+    result: dict[str, Any] | None = None
     if candidate_path.exists():
-        result = json.loads(candidate_path.read_text(encoding="utf-8"))
-    else:
+        try:
+            cached = json.loads(candidate_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            cached = None
+        # A pitch-class histogram is a valid extractor output for another mode,
+        # but it is not a candidate artifact. Never expose it as an empty melody
+        # because that forces the agent to debug cache state instead of audio.
+        if isinstance(cached, dict) and isinstance(cached.get("melody"), list):
+            result = cached
+        else:
+            candidate_path.unlink(missing_ok=True)
+    if result is None:
         command = [sys.executable, str(BACKEND / "vocal_melody.py"), audio_path, root, "--thaat", thaat]
         proc = subprocess.run(command, cwd=str(BACKEND), capture_output=True, text=True, timeout=900)
         if proc.returncode != 0:
             raise RuntimeError(f"candidate extraction failed: {proc.stderr[-2000:]}")
         result = _parse_last_json(proc.stdout)
+        if not isinstance(result, dict) or not isinstance(result.get("melody"), list):
+            raise RuntimeError("candidate extraction returned no full melody artifact")
         candidate_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
     allowed = set(transcribers or [])
     events = []

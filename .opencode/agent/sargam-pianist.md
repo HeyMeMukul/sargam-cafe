@@ -25,15 +25,15 @@ You are the reasoning controller for an audio-to-piano transcription system. You
 
 ## Mandatory first actions
 
-For the supplied audio path, call the typed tools through the safe bridge:
+The controller supplies an exact absolute audio path and duration in the task prompt. Treat that path as authoritative; do not search for it, rewrite it as `backend/uploads/...`, delete caches, or regenerate files manually. From the repository root, call the typed tools through the safe bridge with `PYTHONPATH=.` and the exact path:
 
 ```bash
-python3 -m backend.agentic.tool_cli retrieve_skills --query "note boundary repeated attack pitch onset offset pianist" --limit 6
-python3 -m backend.agentic.tool_cli get_track_manifest --audio PATH
-python3 -m backend.agentic.tool_cli get_note_candidates --audio PATH --start 0 --end DURATION
+PYTHONPATH=. python3 -m backend.agentic.tool_cli retrieve_skills --query "note boundary repeated attack pitch onset offset pianist" --limit 6
+PYTHONPATH=. python3 -m backend.agentic.tool_cli get_track_manifest --audio "/exact/path/from/task"
+PYTHONPATH=. python3 -m backend.agentic.tool_cli get_note_candidates --audio "/exact/path/from/task" --start 0 --end DURATION
 ```
 
-Do not use arbitrary shell audio scripts when a typed tool exists. The tool output artifact IDs are the only valid evidence references in your final operations.
+If a typed tool fails, report the error and continue with the other typed observations; do not inspect or repair cache files with shell commands. Do not use arbitrary shell audio scripts when a typed tool exists. The tool output artifact IDs are the only valid evidence references in your final operations.
 
 ## Skill policy
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from typing import Any, Awaitable, Callable
 
@@ -44,6 +45,8 @@ async def run_opencode_micro_agent(
     model: str,
     max_tool_calls: int,
     cost_tracker: Any = None,
+    max_requests: int | None = None,
+    timeout_seconds: float | None = None,
 ) -> dict[str, Any]:
     working_baseline = []
     for index, event in enumerate(baseline):
@@ -55,13 +58,22 @@ async def run_opencode_micro_agent(
         f"Track duration is {duration:.3f}s. Inspect the baseline through the typed tools and "
         f"return only the micro-operation JSON object. The baseline event IDs are: "
         f"{[event['event_id'] for event in working_baseline]}. "
-        f"Do not return a replacement melody. Use at most {max_tool_calls} specialist calls."
+        f"Do not return a replacement melody. Use at most {max_tool_calls} specialist calls. "
+        f"Stop after at most {max_requests or max(4, max_tool_calls * 2 + 4)} model responses."
     )
+    request_budget = max_requests or int(os.getenv("SARGAM_AGENTIC_MAX_REQUESTS", str(max(4, max_tool_calls * 2 + 4))))
+    run_timeout = timeout_seconds or float(os.getenv("SARGAM_AGENTIC_TIMEOUT_SECONDS", "180"))
     cmd = [
         "opencode", "run", "--agent", "sargam-pianist", "--model", model,
         "--format", "json", "--log-level", "ERROR", "--auto", prompt,
     ]
-    raw = await run_agent_stream(cmd, log_callback, cost_tracker=cost_tracker)
+    raw = await run_agent_stream(
+        cmd,
+        log_callback,
+        cost_tracker=cost_tracker,
+        max_requests=request_budget,
+        timeout_seconds=run_timeout,
+    )
     parsed = parse_operations(raw)
     if not parsed:
         return {

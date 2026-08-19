@@ -67,6 +67,8 @@ CHROMATIC_BRIDGE_MODE = os.getenv("SARGAM_CHROMATIC_BRIDGE", "on").strip().lower
 PIANIST_AGENT_MODE = os.getenv("SARGAM_PIANIST_AGENT", "off").strip().lower()  # off | shadow | on
 PIANIST_AGENT_MODEL = os.getenv("SARGAM_AGENTIC_MODEL", "gpt-5-mini").strip()
 PIANIST_AGENT_MAX_TOOL_CALLS = int(os.getenv("SARGAM_AGENTIC_MAX_TOOL_CALLS", "8"))
+PIANIST_AGENT_MAX_REQUESTS = int(os.getenv("SARGAM_AGENTIC_MAX_REQUESTS", str(max(4, PIANIST_AGENT_MAX_TOOL_CALLS * 2 + 4))))
+PIANIST_AGENT_TIMEOUT_SECONDS = float(os.getenv("SARGAM_AGENTIC_TIMEOUT_SECONDS", "180"))
 
 # Matches note names like C4, C#4, D#5, F#3, B2 inside a bash command
 NOTE_RE = re.compile(r"\b([A-G](?:#|b)?[0-9])\b")
@@ -385,8 +387,15 @@ class CostTracker:
         }
 
 
-async def run_agent_stream(cmd, log_callback, collect_text=True, cost_tracker=None):
-    """Run an opencode CLI subprocess, forwarding events. Returns collected text parts."""
+async def run_agent_stream(
+    cmd,
+    log_callback,
+    collect_text=True,
+    cost_tracker=None,
+    max_requests=None,
+    timeout_seconds=None,
+):
+    """Run an opencode subprocess with optional completion and wall-clock bounds."""
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd, cwd=PROJECT_ROOT,
@@ -398,8 +407,11 @@ async def run_agent_stream(cmd, log_callback, collect_text=True, cost_tracker=No
         return None
 
     text_parts = []
+    completed_requests = 0
+    stopped_for_budget = False
 
     async def read_stream(stream, is_stdout: bool):
+        nonlocal completed_requests, stopped_for_budget
         while True:
             line = await stream.readline()
             if not line:
@@ -409,14 +421,50 @@ async def run_agent_stream(cmd, log_callback, collect_text=True, cost_tracker=No
                 continue
             if is_stdout:
                 await handle_event(text, log_callback, text_parts, cost_tracker)
+                try:
+                    event_type = json.loads(text).get("type")
+                except (TypeError, json.JSONDecodeError):
+                    event_type = None
+                if event_type == "step_finish":
+                    completed_requests += 1
+                request_limit_reached = completed_requests >= int(max_requests or 0)
+                if (
+                    max_requests is not None
+                    and request_limit_reached
+                    and proc.returncode is None
+                    and not stopped_for_budget
+                ):
+                    stopped_for_budget = True
+                    await log_callback(
+                        f"[System] Agent request budget reached ({max_requests}); terminating safely."
+                    )
+                    proc.terminate()
             else:
                 await log_callback(f"[System] {text}")
 
-    await asyncio.gather(
+    streams = asyncio.gather(
         read_stream(proc.stdout, True),
         read_stream(proc.stderr, False),
     )
-    await proc.wait()
+    timed_out = False
+    try:
+        if timeout_seconds is None:
+            await streams
+        else:
+            await asyncio.wait_for(streams, timeout=float(timeout_seconds))
+    except asyncio.TimeoutError:
+        timed_out = True
+        await log_callback(
+            f"[System] Agent wall-clock timeout reached ({float(timeout_seconds):.0f}s); terminating safely."
+        )
+        if proc.returncode is None:
+            proc.kill()
+    finally:
+        if proc.returncode is None:
+            proc.kill()
+        await proc.wait()
+    if timed_out or stopped_for_budget:
+        return "".join(text_parts) if text_parts else None
     return "".join(text_parts)
 
 
@@ -700,6 +748,8 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
                 PIANIST_AGENT_MODEL,
                 PIANIST_AGENT_MAX_TOOL_CALLS,
                 cost_tracker,
+                PIANIST_AGENT_MAX_REQUESTS,
+                PIANIST_AGENT_TIMEOUT_SECONDS,
             )
             if agentic_shadow.get("promoted") and PIANIST_AGENT_MODE == "on":
                 full_segments = agentic_shadow.get("events") or full_segments

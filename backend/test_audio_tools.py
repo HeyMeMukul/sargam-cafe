@@ -30,7 +30,11 @@ boundary = inspect_boundary_window(AUDIO, 2.0, 3.0)
 assert boundary['candidate_onsets']
 candidates = get_note_candidates(AUDIO, 2.0, 9.0)
 assert candidates['events']
-audition = audition_phrase(AUDIO, candidates['events'], 2.0, 9.0)
+(cache / 'production.melody.json').write_text(json.dumps({'pitch_class_duration': {'0': 1.0}}))
+recovered = get_note_candidates(AUDIO, 2.0, 9.0)
+assert recovered['events']
+assert isinstance(json.loads((cache / 'production.melody.json').read_text())['melody'], list)
+audition = audition_phrase(AUDIO, recovered['events'], 2.0, 9.0)
 assert audition['audio_rendered'] is False
 score = score_hypothesis(AUDIO, candidates['events'])
 assert score['event_count'] == len(candidates['events'])
