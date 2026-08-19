@@ -108,6 +108,12 @@ def apply_operations(baseline: list[dict[str, Any]], operations: list[dict[str, 
             second["evidence_refs"] = refs
             first["agent_reason"] = reason
             second["agent_reason"] = reason
+            # A split is an articulation decision, not merely a boundary edit:
+            # the second segment must receive a fresh piano attack. Without this
+            # marker, the Song-like renderer's held-note collapse can merge the
+            # two same-pitch segments back into one long, empty-sounding hold.
+            second["retrigger"] = True
+            second["articulation"] = "retrigger"
             events[events.index(target)] = first
             events.insert(events.index(first) + 1, second)
             by_id.pop(target_base_id, None)

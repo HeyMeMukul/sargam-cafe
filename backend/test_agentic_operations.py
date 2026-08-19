@@ -12,6 +12,7 @@ result = apply_operations(baseline, [{
 }], 3.0)
 assert len(result) == 3
 assert result[0]['end'] == 1.5 and result[1]['start'] == 1.5
+assert result[1]['retrigger'] is True and result[1]['articulation'] == 'retrigger'
 
 inserted = apply_operations(baseline, [{
     "op": "insert_event", "event": {"start": 1.4, "end": 1.6, "midi": 61},
