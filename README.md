@@ -75,10 +75,12 @@ ROSVOT is the dedicated note-level candidate. When its repository and checkpoint
 ```bash
 export SARGAM_ROSVOT_DIR=/absolute/path/to/ROSVOT
 export SARGAM_ROSVOT_CKPT_DIR=/absolute/path/to/ROSVOT/checkpoints
+# Optional when ROSVOT dependencies are installed in a separate environment.
+export SARGAM_ROSVOT_PYTHON=/absolute/path/to/rosvot-venv/bin/python
 export SARGAM_TRANSCRIBER=rosvot
 ```
 
-The checkpoints directory must contain `rosvot/model.pt` and `rwbd/model.pt`. Startup telemetry now reports `rosvot=ready` or `rosvot=unavailable`; an `auto` run uses ROSVOT when ready and falls back to CREPE when it is unavailable or fails. The current ROSVOT adapter preserves MIDI note intervals and same-pitch retriggers. On the supplied Tum Se Hi clip, the direct adapter produced 52 events and 19 retriggers, compared with 37 browser events from the CREPE baseline. Its diagnostic phrase edit distance was 16 versus 15 for the current CREPE bridge profile, so ROSVOT is integrated as an experimental candidate but is **not promoted as the default** until it passes the strict onset–pitch–offset ground-truth gate.
+The checkpoints directory must contain `rosvot/model.pt` and `rwbd/model.pt`. Startup telemetry now reports `rosvot=ready` or `rosvot=unavailable`, plus `rosvot_python=custom|backend`; an `auto` run uses ROSVOT when ready and falls back to CREPE when it is unavailable or fails. Use `SARGAM_ROSVOT_PYTHON` when the model requires a separate compatible Python environment. The current ROSVOT adapter preserves MIDI note intervals and same-pitch retriggers. On the supplied Tum Se Hi clip, the direct adapter produced 52 events and 19 retriggers, compared with 37 browser events from the CREPE baseline. Its diagnostic phrase edit distance was 16 versus 15 for the current CREPE bridge profile, so ROSVOT is integrated as an experimental candidate but is **not promoted as the default** until it passes the strict onset–pitch–offset ground-truth gate.
 
 ## Usage
 1. Start the backend and frontend.

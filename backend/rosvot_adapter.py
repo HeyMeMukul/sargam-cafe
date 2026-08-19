@@ -10,6 +10,7 @@ Required environment variables when ROSVOT is not vendored in the project:
   SARGAM_ROSVOT_CKPT_DIR=/absolute/path/to/ROSVOT/checkpoints  (optional)
   SARGAM_ROSVOT_THRESHOLD=0.85  (optional)
   SARGAM_ROSVOT_CACHE_DIR=/absolute/path/to/shared/stem/cache  (optional)
+  SARGAM_ROSVOT_PYTHON=/absolute/path/to/rosvot-venv/bin/python  (optional)
 """
 from __future__ import annotations
 
@@ -27,6 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ROSVOT_DIR = Path(os.getenv("SARGAM_ROSVOT_DIR", str(ROOT / "third_party" / "ROSVOT"))).resolve()
 CKPT_DIR = Path(os.getenv("SARGAM_ROSVOT_CKPT_DIR", str(ROSVOT_DIR / "checkpoints"))).resolve()
 THRESHOLD = float(os.getenv("SARGAM_ROSVOT_THRESHOLD", "0.85"))
+ROSVOT_PYTHON = os.getenv("SARGAM_ROSVOT_PYTHON", sys.executable).strip() or sys.executable
 
 
 def _shared_stem(audio_path: str) -> Path:
@@ -71,7 +73,7 @@ def _run_rosvot(stem: Path, output_dir: Path) -> tuple[Path, Path | None]:
     # ROSVOT uses its own model-device logic. Keep CUDA visible when available;
     # on CPU-only hosts the local ROSVOT CPU-safe patch is required.
     cmd = [
-        sys.executable, "-m", "inference.rosvot",
+        ROSVOT_PYTHON, "-m", "inference.rosvot",
         "-o", str(output_dir), "-p", str(stem),
         "--ckpt", str(model_ckpt), "--wbd_ckpt", str(wbd_ckpt),
         "--thr", str(THRESHOLD), "--ds_workers", "0",

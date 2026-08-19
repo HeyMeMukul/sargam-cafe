@@ -28,6 +28,7 @@ VOCAL_SCRIPT = os.path.join(BACKEND_DIR, "vocal_melody.py")
 ROSVOT_SCRIPT = os.path.join(BACKEND_DIR, "rosvot_adapter.py")
 ROSVOT_DIR = os.getenv("SARGAM_ROSVOT_DIR", os.path.join(PROJECT_ROOT, "third_party", "ROSVOT"))
 ROSVOT_CKPT_DIR = os.getenv("SARGAM_ROSVOT_CKPT_DIR", os.path.join(ROSVOT_DIR, "checkpoints"))
+ROSVOT_PYTHON = os.getenv("SARGAM_ROSVOT_PYTHON", "").strip()
 ROSVOT_READY = (
     os.path.isdir(ROSVOT_DIR)
     and os.path.isfile(os.path.join(ROSVOT_CKPT_DIR, "rosvot", "model.pt"))
@@ -526,7 +527,8 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         f"key_agent={KEY_AGENT_MODE or 'auto'}, section_review={SECTION_REVIEW_MODE or 'off'}, "
         f"reference={'on' if REFERENCE_FILE else 'off'}, "
         f"decoder=chromatic_bridge_{CHROMATIC_BRIDGE_MODE or 'on'}, "
-        f"rosvot={'ready' if ROSVOT_READY else 'unavailable'}"
+        f"rosvot={'ready' if ROSVOT_READY else 'unavailable'}, "
+        f"rosvot_python={'custom' if ROSVOT_PYTHON else 'backend'}"
     )
     cost_tracker = CostTracker()
 
