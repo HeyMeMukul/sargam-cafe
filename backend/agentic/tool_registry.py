@@ -73,6 +73,13 @@ class ToolRegistry:
 def default_registry() -> ToolRegistry:
     registry = ToolRegistry()
     registry.register(ToolSpec(
+        "retrieve_skills",
+        "Retrieve cited project skill excerpts relevant to the current musical decision.",
+        ("query",),
+        ("limit",),
+        output_artifact="skill_citations",
+    ))
+    registry.register(ToolSpec(
         "get_track_manifest",
         "Return audio duration, hashes, stems, and available evidence artifacts.",
         ("audio_path",),
