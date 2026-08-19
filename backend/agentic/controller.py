@@ -17,6 +17,7 @@ from typing import Any, Callable
 from .contracts import AgentTrace, EvidenceRef, HypothesisVersion, NoteCandidate, ToolCall
 from .runtime_tools import build_runtime_registry
 from .skill_registry import SkillRegistry
+from .memory import EpisodicMemory
 
 
 FINAL_SCHEMA = {
@@ -65,6 +66,7 @@ class PianistAgent:
         self.max_tool_calls = max_tool_calls
         self.registry = build_runtime_registry()
         self.skill_registry = SkillRegistry(skill_dir or Path(__file__).resolve().parents[1] / "skills")
+        self.memory = EpisodicMemory()
 
     def _tool_definitions(self) -> list[dict[str, Any]]:
         definitions = []
@@ -142,6 +144,7 @@ class PianistAgent:
                 "confidence": event.get("pitch_confidence") or event.get("voicing_confidence"),
                 "summary": "production extractor candidate; preserved until targeted evidence supports revision",
                 }]
+        memories = self.memory.retrieve(manifest["audio_sha256"], tags=["melody", "pianist"], limit=3)
         skills = self.skill_registry.citation_bundle(
             "note boundary retrigger missing melody pitch onset offset audition pianist performance",
             limit=6,
@@ -175,6 +178,10 @@ class PianistAgent:
             "track_manifest": manifest,
             "baseline_candidates": self._compact(candidates),
             "skill_citations": skills,
+            "episodic_memories": [
+                {"memory_id": memory.get("memory_id"), "outcome": memory.get("outcome"), "tags": memory.get("tags", [])}
+                for memory in memories
+            ],
             "skill_bootstrap_artifact": bootstrap_skill,
             "tool_policy": "Use tools for local disagreements, missing repeated attacks, and suspicious pitch/boundary events; do not request the whole waveform as prose. Before finalizing, use at least one targeted audio tool and preserve the baseline if evidence is insufficient.",
         }
@@ -335,6 +342,14 @@ class PianistAgent:
         trace.hypotheses.append(hypothesis)
         trace.final_hypothesis_id = hypothesis.hypothesis_id
         trace.validate()
+        trace_payload = {
+            "trace_id": trace.trace_id,
+            "audio_sha256": trace.audio_sha256,
+            "skill_citations": trace.skill_citations,
+            "tool_calls": [asdict(call) for call in trace.tool_calls],
+            "final_hypothesis_id": trace.final_hypothesis_id,
+        }
+        memory_record = self.memory.write(trace_payload, outcome=hypothesis.state, tags=["melody", "pianist"])
         return {
             "trace": {
                 "trace_id": trace.trace_id,
@@ -350,6 +365,7 @@ class PianistAgent:
                 "unresolved_questions": hypothesis.unresolved_questions,
                 "decision_reason": hypothesis.decision_reason,
             },
+            "memory": {"memory_id": memory_record["memory_id"], "outcome": memory_record["outcome"]},
             "validation": {
                 "score": validation_score,
                 "audition": validation_audition,
