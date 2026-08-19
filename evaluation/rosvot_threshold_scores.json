@@ -1,0 +1,80 @@
+[
+  {
+    "file": "rosvot_0.60.json",
+    "note_count": 53,
+    "retrigger_count": 19,
+    "scale_violation_count": 3,
+    "phrase_distances": [
+      3,
+      4,
+      5,
+      4
+    ],
+    "total_phrase_edit_distance": 16
+  },
+  {
+    "file": "rosvot_0.70.json",
+    "note_count": 52,
+    "retrigger_count": 19,
+    "scale_violation_count": 4,
+    "phrase_distances": [
+      3,
+      4,
+      5,
+      4
+    ],
+    "total_phrase_edit_distance": 16
+  },
+  {
+    "file": "rosvot_0.80.json",
+    "note_count": 52,
+    "retrigger_count": 19,
+    "scale_violation_count": 4,
+    "phrase_distances": [
+      3,
+      4,
+      5,
+      4
+    ],
+    "total_phrase_edit_distance": 16
+  },
+  {
+    "file": "rosvot_0.85.json",
+    "note_count": 52,
+    "retrigger_count": 19,
+    "scale_violation_count": 4,
+    "phrase_distances": [
+      3,
+      4,
+      5,
+      4
+    ],
+    "total_phrase_edit_distance": 16
+  },
+  {
+    "file": "rosvot_0.90.json",
+    "note_count": 52,
+    "retrigger_count": 19,
+    "scale_violation_count": 4,
+    "phrase_distances": [
+      3,
+      4,
+      5,
+      4
+    ],
+    "total_phrase_edit_distance": 16
+  },
+  {
+    "file": "rosvot_0.95.json",
+    "note_count": 46,
+    "retrigger_count": 17,
+    "scale_violation_count": 3,
+    "phrase_distances": [
+      3,
+      4,
+      5,
+      4
+    ],
+    "total_phrase_edit_distance": 16
+  }
+]
