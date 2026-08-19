@@ -147,4 +147,9 @@ def apply_operations(baseline: list[dict[str, Any]], operations: list[dict[str, 
             target["evidence_refs"] = refs
             target["agent_reason"] = reason
     events.sort(key=lambda event: (float(event["start"]), float(event["end"])))
+    pitch_classes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+    for event in events:
+        if not event.get('note') and event.get('midi') is not None:
+            midi = int(event['midi'])
+            event['note'] = f"{pitch_classes[midi % 12]}{midi // 12 - 1}"
     return events

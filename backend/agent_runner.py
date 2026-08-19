@@ -19,6 +19,11 @@ import tempfile
 import re
 import subprocess
 
+try:
+    from agentic.opencode_adapter import run_opencode_micro_agent
+except ImportError:
+    run_opencode_micro_agent = None
+
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 VENV_PYTHON = os.path.join(BACKEND_DIR, "venv", "bin", "python3")
@@ -59,6 +64,9 @@ SECTION_REVIEW_MODE = os.getenv("SARGAM_SECTION_REVIEW", "off").strip().lower()
 EVIDENCE_DIR = os.getenv("SARGAM_EVIDENCE_DIR", "").strip()
 REFERENCE_FILE = os.getenv("SARGAM_REFERENCE_FILE", "").strip()
 CHROMATIC_BRIDGE_MODE = os.getenv("SARGAM_CHROMATIC_BRIDGE", "on").strip().lower()
+PIANIST_AGENT_MODE = os.getenv("SARGAM_PIANIST_AGENT", "off").strip().lower()  # off | shadow | on
+PIANIST_AGENT_MODEL = os.getenv("SARGAM_AGENTIC_MODEL", "gpt-5-mini").strip()
+PIANIST_AGENT_MAX_TOOL_CALLS = int(os.getenv("SARGAM_AGENTIC_MAX_TOOL_CALLS", "8"))
 
 # Matches note names like C4, C#4, D#5, F#3, B2 inside a bash command
 NOTE_RE = re.compile(r"\b([A-G](?:#|b)?[0-9])\b")
@@ -527,6 +535,7 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         f"key_agent={KEY_AGENT_MODE or 'auto'}, section_review={SECTION_REVIEW_MODE or 'off'}, "
         f"reference={'on' if REFERENCE_FILE else 'off'}, "
         f"decoder=chromatic_bridge_{CHROMATIC_BRIDGE_MODE or 'on'}, "
+        f"pianist_agent={PIANIST_AGENT_MODE or 'off'}, "
         f"rosvot={'ready' if ROSVOT_READY else 'unavailable'}, "
         f"rosvot_python={'custom' if ROSVOT_PYTHON else 'backend'}"
     )
@@ -677,12 +686,43 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
     duration = float(melody.get("duration") or 0)
     tempo = melody.get("tempo")
     beats = melody.get("beats") or []
+    guided_mode = bool(melody.get("reference_alignment"))
+    agentic_shadow = None
+    if PIANIST_AGENT_MODE in {"shadow", "on"} and run_opencode_micro_agent is not None and not guided_mode:
+        await log_callback(f"[System] Running evidence-gated pianist agent ({PIANIST_AGENT_MODE})...")
+        try:
+            agentic_shadow = await run_opencode_micro_agent(
+                audio_filepath,
+                duration,
+                full_segments,
+                run_agent_stream,
+                log_callback,
+                PIANIST_AGENT_MODEL,
+                PIANIST_AGENT_MAX_TOOL_CALLS,
+                cost_tracker,
+            )
+            if agentic_shadow.get("promoted") and PIANIST_AGENT_MODE == "on":
+                full_segments = agentic_shadow.get("events") or full_segments
+                melody = dict(melody)
+                melody["melody"] = full_segments
+                melody["transcriber"] = "agentic_pianist"
+                melody["agentic_promoted"] = True
+                await log_callback(
+                    f"[System] Pianist agent promoted {len(full_segments)} evidence-gated events."
+                )
+            else:
+                await log_callback(
+                    f"[System] Pianist agent kept baseline (promoted={bool(agentic_shadow.get('promoted'))})."
+                )
+        except Exception as exc:
+            await log_callback(
+                f"[System] Pianist agent unavailable; preserving baseline ({type(exc).__name__})."
+            )
+    tempo = melody.get("tempo")
     await log_callback(f"[System] Melody extracted: {len(full_segments)} notes over {duration:.0f}s."
                        + (f" Tempo: {tempo} BPM" if tempo else ""))
 
     scale_notes = scale_notes_for(final["root"], final["thaat"])
-
-    guided_mode = bool(melody.get("reference_alignment"))
 
     # --- Phase C: optional length-proportional LLM review ---
     # The extractor already carries pitch/onset/voicing evidence. The live
@@ -898,6 +938,20 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         "crepe",
     )
     model_threshold = melody.get("model_threshold")
+    agentic_summary = None
+    if isinstance(agentic_shadow, dict):
+        agentic_summary = {
+            "mode": PIANIST_AGENT_MODE,
+            "state": agentic_shadow.get("state", "uncertain"),
+            "promoted": bool(agentic_shadow.get("promoted")),
+            "operation_count": len(agentic_shadow.get("operations") or []),
+            "mutations": [
+                operation.get("op") for operation in (agentic_shadow.get("operations") or [])
+                if operation.get("op") != "keep"
+            ],
+            "unresolved_questions": agentic_shadow.get("unresolved_questions") or [],
+        }
+
     melody_out = {
         "root": PC_TO_NOTE[root_pc],
         "root_note": f"{final['root']}4",
@@ -912,6 +966,7 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         "reference_file": melody.get("reference_file"),
         "source_separation": melody.get("source_separation"),
         "source_separation_warning": melody.get("source_separation_warning"),
+        "agentic": agentic_summary,
     }
 
     payload = {
@@ -925,6 +980,7 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         "reference_file": melody.get("reference_file"),
         "source_separation": melody.get("source_separation"),
         "source_separation_warning": melody.get("source_separation_warning"),
+        "agentic": agentic_summary,
         "chords": chords,
         "melody": melody_out,
     }
