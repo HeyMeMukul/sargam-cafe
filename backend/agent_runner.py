@@ -59,13 +59,13 @@ SECTION_MODEL = "opencode/deepseek-v4-flash-free"
 TARGET_SECTION_LEN = 6.0    # aim for ~6s per subagent section
 MAX_SECTIONS = 32           # upper bound on parallel sections
 MAX_CONCURRENCY = 10        # subagents running at once
-SECTION_REVIEW_MODE = os.getenv("SARGAM_SECTION_REVIEW", "off").strip().lower()
+SECTION_REVIEW_MODE = os.getenv("SARGAM_SECTION_REVIEW", "on").strip().lower()
 # Optional research side-channel; unset by default so normal runs are unchanged.
 EVIDENCE_DIR = os.getenv("SARGAM_EVIDENCE_DIR", "").strip()
 REFERENCE_FILE = os.getenv("SARGAM_REFERENCE_FILE", "").strip()
 CHROMATIC_BRIDGE_MODE = os.getenv("SARGAM_CHROMATIC_BRIDGE", "on").strip().lower()
-PIANIST_AGENT_MODE = os.getenv("SARGAM_PIANIST_AGENT", "off").strip().lower()  # off | shadow | on
-PIANIST_AGENT_MODEL = os.getenv("SARGAM_AGENTIC_MODEL", "gpt-5-mini").strip()
+PIANIST_AGENT_MODE = os.getenv("SARGAM_PIANIST_AGENT", "on").strip().lower()  # off | shadow | on
+PIANIST_AGENT_MODEL = os.getenv("SARGAM_AGENTIC_MODEL", "opencode/deepseek-v4-flash-free").strip()
 PIANIST_AGENT_MAX_TOOL_CALLS = int(os.getenv("SARGAM_AGENTIC_MAX_TOOL_CALLS", "8"))
 PIANIST_AGENT_MAX_REQUESTS = int(os.getenv("SARGAM_AGENTIC_MAX_REQUESTS", str(max(4, PIANIST_AGENT_MAX_TOOL_CALLS * 2 + 4))))
 PIANIST_AGENT_TIMEOUT_SECONDS = float(os.getenv("SARGAM_AGENTIC_TIMEOUT_SECONDS", "180"))

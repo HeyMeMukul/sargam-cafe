@@ -59,7 +59,7 @@ npm run dev
 
 Open the dev URL → **Load Track** → pick a song → **Start Agent** → watch key → chords → melody → solo performance stream in.
 
-> Without the `opencode` CLI, the deterministic audio pipeline (key → chords → melody) still runs; only the LLM validation subagents are skipped.
+> The LLM layer is now ON by default (`SARGAM_SECTION_REVIEW=on`, `SARGAM_PIANIST_AGENT=on`, free DeepSeek model). It reads `backend/skills/*.json` as soft priors under strict evidence gates — it flags rather than rewrites, and falls back to the deterministic pipeline (key → chords → melody) when the `opencode` CLI is missing or evidence is ambiguous. Set both to `off`/`shadow` for pure deterministic runs.
 
 ---
 
@@ -156,12 +156,12 @@ The checkpoints directory must contain `rosvot/model.pt` and `rwbd/model.pt`. St
 | `SARGAM_ROSVOT_DIR` / `SARGAM_ROSVOT_CKPT_DIR` / `SARGAM_ROSVOT_PYTHON` | — | Locate ROSVOT repo, checkpoints, optional isolated Python |
 | `SARGAM_KEY_AGENT` | `auto` | `auto` \| `always` \| `never` — deterministic key detector is accepted directly when confidence ≥ threshold |
 | `SARGAM_KEY_AGENT_MIN_CONF` | `0.65` | Confidence gate for skipping the hit-and-trial LLM key agent |
-| `SARGAM_SECTION_REVIEW` | `off` | `on`/`always` enables parallel `melody-searcher` validation (~6 s sections, up to 32 sections / 10 concurrent) |
+| `SARGAM_SECTION_REVIEW` | `on` | `on`/`always` enables parallel `melody-searcher` validation (~6 s sections, up to 32 sections / 10 concurrent). Set `off` to skip LLM review and keep deterministic extractor output |
 | `SARGAM_CHROMATIC_BRIDGE` | `on` | `off` restores the raw event stream for A/B comparison |
 | `SARGAM_EVIDENCE_DIR` | — | When set, writes `<upload>.evidence.json` (frames, F0/MIDI, periodicity, voicing, RMS, onsets, tempo + emitted melody) |
 | `SARGAM_REFERENCE_FILE` | — | Enables isolated reference-conditioned scoring (one event per supplied token, see below) |
-| `SARGAM_PIANIST_AGENT` | `off` | `off` \| `shadow` \| `on` — evidence-gated pianist micro-ops; `on` promotes only on strict evidence gates |
-| `SARGAM_AGENTIC_MODEL` | `gpt-5-mini` | Model for the pianist micro-agent |
+| `SARGAM_PIANIST_AGENT` | `on` | `off` \| `shadow` \| `on` — evidence-gated pianist micro-ops; `on` promotes only on strict evidence gates. `shadow` observes without changing playback |
+| `SARGAM_AGENTIC_MODEL` | `opencode/deepseek-v4-flash-free` | Model for the pianist micro-agent |
 | `SARGAM_AGENTIC_MAX_TOOL_CALLS` / `SARGAM_AGENTIC_MAX_REQUESTS` / `SARGAM_AGENTIC_TIMEOUT_SECONDS` | `8` / auto / `180` | Budget + wall-clock bounds for the pianist agent |
 
 ---

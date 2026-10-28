@@ -4,7 +4,7 @@ The agentic layer is an **evidence-to-hypothesis controller**, not an LLM-only a
 
 ## Runtime modes
 
-The browser backend keeps the deterministic CREPE/ROSVOT path as the default. Set `SARGAM_PIANIST_AGENT=shadow` to run the pianist controller after extraction, expose a compact proposal summary in the transcription payload, and preserve the baseline score for playback. Set `SARGAM_PIANIST_AGENT=on` only for an explicit experiment; the controller may replace the baseline only when it returns an accepted operation set that passes typed validation. Any parse, evidence, timing, or operation failure falls back to the baseline.
+The browser backend runs the evidence-gated pianist controller by default (`SARGAM_PIANIST_AGENT=on`). Set `SARGAM_PIANIST_AGENT=shadow` to observe proposals without changing playback, or `off` for a pure deterministic CREPE/ROSVOT run. The controller may replace the baseline only when it returns an accepted operation set that passes typed validation. Any parse, evidence, timing, or operation failure falls back to the baseline.
 
 ```bash
 export SARGAM_PIANIST_AGENT=shadow
