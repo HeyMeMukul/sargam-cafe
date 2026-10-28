@@ -20,8 +20,17 @@ dist-ssr
 # Backend
 backend/venv/
 backend/uploads/
+rosvot-venv/
+ROSVOT/
+third_party/
+*.evidence.json
 __pycache__/
 *.pyc
+
+# Local-only (secrets / sessions)
+.creds.sh
+session.txt
+.costs.json
 
 # Editor directories and files
 .vscode/*
