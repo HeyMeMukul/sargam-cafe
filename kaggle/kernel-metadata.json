@@ -1,0 +1,13 @@
+{
+  "id": "cyb3rfy/sargamking-v2-batch",
+  "title": "SargamKing v2 Batch",
+  "code_file": "main.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": ["cyb3rfy/sargamking-batch-v1"],
+  "competition_sources": [],
+  "kernel_sources": []
+}
