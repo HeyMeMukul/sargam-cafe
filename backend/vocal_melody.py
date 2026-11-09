@@ -685,6 +685,17 @@ def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
     if CHROMATIC_BRIDGE_MODE in {'on', 'auto'}:
         merged = _collapse_chromatic_bridges(merged, root_pc, intervals)
 
+    # Drop non-vocal interludes: very long notes with very low pitch confidence
+    # are intro/outro music or silence held by the tracker, not sung melody.
+    # (Ambarsariya run: a 12.7s conf-0.23 "note" at 0.0.) Keep them as rests.
+    filtered = []
+    for nn in merged:
+        dur = nn['end'] - nn['start']
+        if dur >= 4.0 and float(nn.get('pitch_confidence', 0)) < 0.35:
+            continue
+        filtered.append(nn)
+    merged = filtered
+
     # strip internal features; flag true sustains
     out = []
     for nn in merged:

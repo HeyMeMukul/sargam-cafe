@@ -57,7 +57,7 @@ SECTION_MODEL = "opencode-go/muse-spark-1.3-contributor"
 # sections in parallel. This gives finer-grained validation and keeps each
 # subagent's prompt small (which also makes it faster and less error-prone).
 TARGET_SECTION_LEN = 6.0    # aim for ~6s per subagent section
-MAX_SECTIONS = 32           # upper bound on parallel sections
+MAX_SECTIONS = 16           # upper bound on parallel sections (long songs flood tokens/time)
 MAX_CONCURRENCY = 10        # subagents running at once
 SECTION_REVIEW_MODE = os.getenv("SARGAM_SECTION_REVIEW", "on").strip().lower()
 # Optional research side-channel; unset by default so normal runs are unchanged.
@@ -743,7 +743,9 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
     beats = melody.get("beats") or []
     guided_mode = bool(melody.get("reference_alignment"))
     # --- Pianist v2 ensemble: ROSVOT boundaries + CREPE pitch (safe fallback) ---
-    if ENSEMBLE_MODE in {"on", "always"} and not guided_mode:
+    # Only attempt the ROSVOT secondary when checkpoints are actually present;
+    # otherwise the subprocess fails pointlessly on every long song.
+    if ENSEMBLE_MODE in {"on", "always"} and not guided_mode and ROSVOT_READY:
         try:
             from pianist_v2.ensemble import merge_rosvot_crepe as _merge
 

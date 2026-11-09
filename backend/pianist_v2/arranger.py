@@ -60,6 +60,13 @@ def arrange_for_piano(melody: list[dict], chords: list[dict], seed: int = 42) ->
         root = min(midis)
         bass = max(21, root - 12)
         bass_end = round(min(en, s + 0.6), 3)
+        # Don't scaffold accompaniment under non-vocal/low-confidence melody:
+        # bass/harmony on top of tracker garbage (e.g. 12s intro drone) sounds broken.
+        window_mel = [lm for lm in lifted_melody
+                      if lm.get("midi") is not None
+                      and float(lm.get("start", 1e9)) < en and s < float(lm.get("end", -1e9))]
+        if window_mel and all(float(x.get("pitch_confidence", 1)) < 0.4 for x in window_mel):
+            continue
         # INVARIANT: bass must never collide with an overlapping melody note
         # (within +/-1 semitone in absolute pitch). Shift down an octave;
         # if that leaves piano range, shift up instead; drop if still colliding.
