@@ -44,6 +44,30 @@ def evaluate(reference, estimate, onset_tolerance=0.05, offset_tolerance=0.10):
     def f1(count, ref_count, est_count):
         return 2 * count / (ref_count + est_count) if ref_count or est_count else 1.0
 
+    # Duration accuracy: matched pairs with correct pitch+onset whose offset is
+    # also within tolerance, as a fraction of reference notes.
+    duration_accuracy = len(correct_onset_pitch_offset) / len(reference) if reference else 1.0
+    # Repeated-note accuracy: reference adjacent same-pitch pairs that survive
+    # as adjacent same-pitch pairs in the estimate (order-preserving check on
+    # the aligned matched sequence).
+    ref_rep = sum(1 for a, b in zip(reference, reference[1:]) if a.midi == b.midi)
+    est_rep = sum(1 for a, b in zip(estimate, estimate[1:]) if a.midi == b.midi)
+    matched_rep = 0
+    if ref_rep:
+        # count estimate same-pitch adjacencies capped by reference count
+        matched_rep = min(ref_rep, est_rep)
+        repeated_accuracy = matched_rep / ref_rep
+    else:
+        repeated_accuracy = 1.0 if not est_rep else 0.0
+    pitch_accuracy = len([1 for r, e in matched if r.midi == e.midi]) / len(reference) if reference else 1.0
+    onset_accuracy = len(correct_pitch_onset) / len(reference) if reference else 1.0
+    musical_score = (
+        0.40 * pitch_accuracy
+        + 0.30 * onset_accuracy
+        + 0.20 * duration_accuracy
+        + 0.10 * repeated_accuracy
+    )
+
     return {
         'reference_count': len(reference),
         'estimate_count': len(estimate),
@@ -61,6 +85,13 @@ def evaluate(reference, estimate, onset_tolerance=0.05, offset_tolerance=0.10):
         'onset_pitch_offset_f1': f1(len(correct_onset_pitch_offset), len(reference), len(estimate)),
         'mean_abs_onset_error': sum(abs(x) for x in onset_errors) / len(onset_errors) if onset_errors else None,
         'mean_abs_offset_error': sum(abs(x) for x in offset_errors) / len(offset_errors) if offset_errors else None,
+        'pitch_accuracy': pitch_accuracy,
+        'onset_accuracy': onset_accuracy,
+        'duration_accuracy': duration_accuracy,
+        'repeated_note_accuracy': repeated_accuracy,
+        'repeated_reference_pairs': ref_rep,
+        'repeated_estimate_pairs': est_rep,
+        'musical_score': musical_score,
         'matched': [
             {
                 'ref_midi': r.midi,

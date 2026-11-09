@@ -441,7 +441,7 @@ def _collapse_chromatic_bridges(notes, root_pc, intervals, max_duration=0.28):
 
 def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
                   brightness=None, root_pc=None, intervals=None,
-                  min_dur=0.035, period_thresh=0.4):
+                  min_dur=0.035, period_thresh=0.4, beats=None):
     """Decode notes from the pitch curve with onset evidence, hysteresis, and
     voicing-transition awareness (see accuracy review §2.2).
 
@@ -478,16 +478,62 @@ def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
     sr_frames = 1.0 / (times[1] - times[0]) if len(times) > 1 else 200.0  # ~200 fps
     frame_ms = 1000.0 / sr_frames
 
-    # --- Build candidate boundaries ---
-    # Onsets always create a potential note start.
-    boundaries = [0.0] + [float(o) for o in onsets]
+    # --- Adaptive onset normalization (song/stem-independent) ---
+    # Raw onset strength varies wildly across songs; normalize by local stats
+    # so decisions use relative evidence, not absolute numbers.
+    if onset_env is not None and len(onset_env):
+        _oe = np.asarray(onset_env, dtype=float)
+        _oe = _oe[np.isfinite(_oe)]
+        if len(_oe):
+            _floor = float(np.percentile(_oe, 35))
+            _peak = float(np.percentile(_oe, 85))
+            _span = max(_peak - _floor, 1e-9)
+            adapt_full = np.clip((np.asarray(onset_env, dtype=float) - _floor) / _span, 0.0, 1.0)
+        else:
+            adapt_full = np.zeros(n, dtype=float)
+    else:
+        adapt_full = np.zeros(n, dtype=float)
+    if len(adapt_full) != n:
+        _xp = np.linspace(0, 1, len(adapt_full))
+        adapt_full = np.interp(np.linspace(0, 1, n), _xp, adapt_full)
+
+    def _release_at(idx: int) -> bool:
+        # A release is a voicing dip OR a local RMS drop (syllable boundary).
+        if 0 <= idx < n and not voiced[idx]:
+            return True
+        if 0 <= idx < n:
+            _lo = max(0, idx - 10)
+            _hi = min(n, idx + 11)
+            _med = float(np.median(rms[_lo:_hi])) if _hi > _lo else float(rms[idx])
+            if float(rms[idx]) < _med * 0.65:
+                return True
+        if 0 < idx < n and (not voiced[idx - 1]):
+            return True
+        return False
+
+    # --- Build candidate boundaries (weak-onset + differentiated persistence) ---
+    # Librosa onsets are WEAK evidence: keep only onsets with adaptive attack
+    # strength. The rest are consonants/breath/vibrato, not musical notes.
+    # (E1: 74/76 raw onsets had no local pitch change.)
+    strong_onsets = []
+    for _o in onsets:
+        _j = int(np.argmin(np.abs(times - float(_o))))
+        _j = max(0, min(n - 1, _j))
+        if adapt_full[_j] >= 0.30:
+            strong_onsets.append(float(_o))
+    boundaries = [0.0] + strong_onsets
 
     # Pitch-change boundaries WITH hysteresis: a change starts a new note only
     # if the new pitch persists for min_stable frames (kill vibrato/jitter).
     # Longer persistence: only a SUSTAINED pitch change starts a new note, so
     # vibrato/ornamental micro-jitter merges into the parent note (general
     # over-fragmentation fix). Real onsets still split notes independently.
-    min_stable = max(2, int(round(150.0 / frame_ms)))  # ~150ms persistence
+    # Differentiated persistence (v3): fast after a clear release (~60ms),
+    # plain ~120ms without release (v2 used a flat 150ms which merged short
+    # real notes). Same-pitch + release + attack opens a retrigger boundary;
+    # gradual legato slides (no release, no attack) stay one note.
+    min_stable_release = max(2, int(round(60.0 / frame_ms)))
+    min_stable_plain = max(2, int(round(120.0 / frame_ms)))
     bridge = 0.09  # bridge unvoiced gaps shorter than this
     pitch_step = 0.7  # semitone tolerance: a real note change in raw pitch
 
@@ -513,13 +559,32 @@ def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
                 j = k
                 continue
             if abs(pitch_raw[j] - p) > pitch_step:
-                # confirm it persists for min_stable frames (tolerance on raw)
+                # confirm it persists (tolerance on raw); requirement depends
+                # on release evidence at the change point.
                 ref = pitch_raw[j]
                 persist = 1
                 while j + persist < n and not np.isnan(pitch_raw[j + persist]) \
                         and abs(pitch_raw[j + persist] - ref) <= pitch_step:
                     persist += 1
-                if persist >= min_stable:
+                step_size = abs(ref - p)
+                atk = float(adapt_full[j]) if 0 <= j < n else 0.0
+                rel = _release_at(j)
+                # Legato glide: continuous voicing, no release, no attack, and
+                # a moderate slide — keep as ONE note (ornament pass marks the
+                # meend). Do not open a piano-attack boundary here.
+                if (not rel) and atk < 0.30 and 1.5 <= step_size < 3.0:
+                    _jj = j
+                    _gradual = True
+                    while _jj < j + persist and _jj < n:
+                        if _release_at(_jj) or (0 <= _jj < n and adapt_full[_jj] >= 0.5):
+                            _gradual = False
+                            break
+                        _jj += 1
+                    if _gradual:
+                        j += persist
+                        continue
+                need = min_stable_release if (rel or atk >= 0.5 or step_size >= 3.0) else min_stable_plain
+                if persist >= need:
                     boundaries.append(float(times[j]))
                     i = j
                     break
@@ -527,6 +592,19 @@ def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
                     # brief excursion: skip past it (merge into parent)
                     j += persist
                     continue
+            else:
+                # Same pitch: a release + attack opens a retrigger boundary
+                # (repeated syllable on one pitch). Gaps >= 25ms of release
+                # with adaptive attack mark a new attack, not a hold.
+                if _release_at(j) and 0 <= j < n and adapt_full[j] >= 0.45:
+                    # require the release to span a real gap, not one frame
+                    _g0 = j
+                    while _g0 - 1 >= 0 and _release_at(_g0 - 1) and (j - (_g0 - 1)) * frame_ms < 120:
+                        _g0 -= 1
+                    if (j - _g0 + 1) * frame_ms >= 20:
+                        boundaries.append(float(times[j]))
+                        i = j
+                        break
             j += 1
         if j >= n:
             break
@@ -541,6 +619,30 @@ def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
         else:
             collapsed[-1] = min(collapsed[-1], b)
     boundaries = collapsed + [float(times[-1])]
+    # --- Beat soft prior (v3): nudge ambiguous boundaries, never hard-snap ---
+    if beats:
+        try:
+            _beat = sorted(float(b) for b in beats)
+            if len(_beat) >= 2:
+                _span = (_beat[-1] - _beat[0]) / max(1, len(_beat) - 1)
+                _grid = set()
+                for _b in _beat:
+                    _grid.add(round(_b, 4))
+                    _grid.add(round(_b + _span / 2.0, 4))
+                _nudged = [boundaries[0]]
+                for _bnd in boundaries[1:-1]:
+                    _j = int(np.argmin(np.abs(times - _bnd)))
+                    _j = max(0, min(n - 1, _j))
+                    if adapt_full[_j] < 0.60:
+                        _near = min(_grid, key=lambda g: abs(g - _bnd))
+                        if abs(_near - _bnd) <= 0.040:
+                            _nudged.append(float(_near))
+                            continue
+                    _nudged.append(_bnd)
+                _nudged.append(boundaries[-1])
+                boundaries = sorted(set(_nudged))
+        except Exception:
+            pass
 
     notes = []
     for bi in range(len(boundaries) - 1):
@@ -904,7 +1006,8 @@ def main():
 
     intervals = THAAT_INTERVALS.get(args.thaat) or [0, 2, 4, 5, 7, 9, 11]
     notes = segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env,
-                          brightness=bright, root_pc=root_pc, intervals=intervals)
+                          brightness=bright, root_pc=root_pc, intervals=intervals,
+                          beats=beats)
 
     # normalize velocity to 0.35..1.0
     if notes:
