@@ -1,0 +1,26 @@
+{
+  "_template": true,
+  "audio_file": "backend/uploads/Tum Se Hi Jab We Met 128 Kbps.mp3",
+  "duration_sec": 323.5,
+  "measured_with": "ffprobe format=duration",
+  "instructions": "TEMPLATE ONLY - contains NO ground-truth pitches for this song. To annotate: listen to the clip (0.25x-0.5x for boundaries), fill the 'annotation' array with one {start, end, midi} event per sung note in time order, then save the array alone as tum_se_hi_full.json (same basename, no .template suffix). See evaluation/annotations/README.md. Validate with: python evaluation/annotations/validate.py <song>.json. Gate with: python evaluation/gate_v2.py <song>.json <extracted_melody>.json",
+  "event_schema": {
+    "start": "note onset in seconds (perceptual pitch start, not consonant burst)",
+    "end": "note offset in seconds (stable note end or rest start); must be > start",
+    "midi": "nearest stable semitone, integer 21-108",
+    "sargam": "optional sargam syllable",
+    "phrase_id": "optional integer phrase index"
+  },
+  "rules": [
+    "events MUST be in strictly non-overlapping time order (each start >= previous end)",
+    "same-pitch repeated syllables are TWO events with separate starts, never one merged event",
+    "a glide is ONE event with an ornament note unless the target pitch is held as a new stable note",
+    "uncertain boundaries: annotate best guess and add annotator_note + confidence downstream, do not silently force"
+  ],
+  "example_events_FORMAT_ONLY_REPLACE_WITH_REAL_NOTES": [
+    {"start": 0.0, "end": 0.5, "midi": 60},
+    {"start": 0.5, "end": 1.0, "midi": 62},
+    {"start": 1.0, "end": 1.4, "midi": 64}
+  ],
+  "annotation": []
+}

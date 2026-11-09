@@ -70,7 +70,7 @@ PIANIST_AGENT_MAX_TOOL_CALLS = int(os.getenv("SARGAM_AGENTIC_MAX_TOOL_CALLS", "8
 PIANIST_AGENT_MAX_REQUESTS = int(os.getenv("SARGAM_AGENTIC_MAX_REQUESTS", str(max(4, PIANIST_AGENT_MAX_TOOL_CALLS * 2 + 4))))
 PIANIST_AGENT_TIMEOUT_SECONDS = float(os.getenv("SARGAM_AGENTIC_TIMEOUT_SECONDS", "180"))
 # Pianist v2 flags (deterministic, safe fallbacks; see docs/PIANIST_V2_ROADMAP.md).
-_PIANIST_V2 = os.getenv("SARGAM_PIANIST_V2", "off").strip().lower() in {"on", "always"}
+_PIANIST_V2 = os.getenv("SARGAM_PIANIST_V2", "on").strip().lower() in {"on", "always"}
 ENSEMBLE_MODE = os.getenv("SARGAM_ENSEMBLE", "on" if _PIANIST_V2 else "off").strip().lower()
 ARRANGER_MODE = os.getenv("SARGAM_ARRANGER", "v2" if _PIANIST_V2 else "v1").strip().lower()
 PERFORMANCE_MODE = os.getenv("SARGAM_PERFORMANCE", "v2" if _PIANIST_V2 else "v1").strip().lower()

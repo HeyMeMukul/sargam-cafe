@@ -20,6 +20,7 @@ def apply_performance(events: list[dict], tempo: float | None = None, seed: int 
     out: list[dict] = []
     for e in events:
         e = dict(e)
+        orig_start = float(e["start"])
         pos = float(e.get("phrase_pos", 0.5))
         is_peak = bool(e.get("phrase_peak"))
         is_cad = bool(e.get("phrase_cadence"))
@@ -32,7 +33,9 @@ def apply_performance(events: list[dict], tempo: float | None = None, seed: int 
             dt -= 0.010
         # Humanize deterministically: ±8ms so repeated renders match.
         dt += (rng.random() - 0.5) * 0.016
-        e["start"] = round(float(e["start"]) + dt, 3)
+        # INVARIANT: start shifts stay within +/-80ms (clamp slow-tempo arch).
+        dt = max(-0.08, min(0.08, dt))
+        e["start"] = round(max(0.0, orig_start + dt), 3)
         # Dynamics: arch 0.85..1.1 around base velocity; melody only.
         if role == "melody":
             arch = 0.9 + 0.2 * (1.0 - abs(pos - 0.55) * 2)
@@ -41,7 +44,16 @@ def apply_performance(events: list[dict], tempo: float | None = None, seed: int 
             if is_cad:
                 arch -= 0.08
             e["velocity"] = round(max(0.2, min(1.0, float(e.get("velocity", 0.7)) * arch)), 3)
+        # INVARIANT: velocity always in 0.2..1.0 for every role.
+        try:
+            e["velocity"] = round(max(0.2, min(1.0, float(e.get("velocity", 0.7)))), 3)
+        except (TypeError, ValueError):
+            e["velocity"] = 0.7
         # Pedal markers at phrase boundaries (frontend buildPedalPlan honors these).
+        # INVARIANT: pedal markers only at phrase boundaries — strip any
+        # incoming markers first, then re-add solely at start/cadence.
+        e.pop("pedal_down", None)
+        e.pop("pedal_up", None)
         if e.get("phrase_id") is not None:
             if pos == 0:
                 e["pedal_down"] = True
