@@ -301,6 +301,9 @@ def _merge_note_pair(a, b):
         merged['raw_midi_float'] = round(wa * ra + wb * rb, 3)
     elif rb is not None:
         merged['raw_midi_float'] = rb
+    if merged.get('ornament') == 'kan' and (merged['end'] - merged['start']) > 0.12:
+        merged.pop('kan', None)
+        merged.pop('ornament', None)
     merged['pitch_confidence'] = max(a.get('pitch_confidence', 0.0),
                                      b.get('pitch_confidence', 0.0))
     merged['voicing_confidence'] = max(a.get('voicing_confidence', 0.0),
@@ -787,13 +790,18 @@ def segment_notes(times, midi, periodicity, rms, sr, onsets, onset_env=None,
     if CHROMATIC_BRIDGE_MODE in {'on', 'auto'}:
         merged = _collapse_chromatic_bridges(merged, root_pc, intervals)
 
-    # Drop non-vocal interludes: very long notes with very low pitch confidence
-    # are intro/outro music or silence held by the tracker, not sung melody.
-    # (Ambarsariya run: a 12.7s conf-0.23 "note" at 0.0.) Keep them as rests.
+    # Drop non-vocal interludes and tracker garbage: very long notes with very
+    # low pitch confidence are intro/outro music held by the tracker, and
+    # isolated very-low-confidence blips (conf < 0.30) are consonant/breath
+    # fragments, not sung notes. (Ambarsariya run: a 12.7s conf-0.23 "note"
+    # at 0.0 plus scattered conf<0.3 fragments.) Keep them as rests.
     filtered = []
     for nn in merged:
         dur = nn['end'] - nn['start']
-        if dur >= 4.0 and float(nn.get('pitch_confidence', 0)) < 0.35:
+        pc = float(nn.get('pitch_confidence', 0))
+        if dur >= 4.0 and pc < 0.35:
+            continue
+        if pc < 0.30:
             continue
         filtered.append(nn)
     merged = filtered
