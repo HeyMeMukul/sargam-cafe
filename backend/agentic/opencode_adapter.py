@@ -65,7 +65,7 @@ async def run_opencode_micro_agent(
     run_timeout = timeout_seconds or float(os.getenv("SARGAM_AGENTIC_TIMEOUT_SECONDS", "180"))
     cmd = [
         "opencode", "run", "--agent", "sargam-pianist", "--model", model,
-        "--format", "json", "--log-level", "ERROR", "--auto", prompt,
+        "--format", "json", "--log-level", "error", "--auto", prompt,
     ]
     raw = await run_agent_stream(
         cmd,

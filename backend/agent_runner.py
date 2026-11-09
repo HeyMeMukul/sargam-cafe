@@ -48,9 +48,9 @@ TEST_SCRIPT = os.path.join(BACKEND_DIR, "test_notes.py")
 THEORY_JSON = os.path.join(BACKEND_DIR, "skills", "Music_Theory_Engine.json")
 
 AGENT_NAME = "piano-master"
-MODEL = "opencode/deepseek-v4-flash-free"
+MODEL = "opencode-go/muse-spark-1.3-contributor"
 SECTION_AGENT = "melody-searcher"
-SECTION_MODEL = "opencode/deepseek-v4-flash-free"
+SECTION_MODEL = "opencode-go/muse-spark-1.3-contributor"
 
 # Section transcription settings (length-proportional)
 # Free DeepSeek Flash subagents cost nothing, so we go WIDE: many small
@@ -65,7 +65,7 @@ EVIDENCE_DIR = os.getenv("SARGAM_EVIDENCE_DIR", "").strip()
 REFERENCE_FILE = os.getenv("SARGAM_REFERENCE_FILE", "").strip()
 CHROMATIC_BRIDGE_MODE = os.getenv("SARGAM_CHROMATIC_BRIDGE", "on").strip().lower()
 PIANIST_AGENT_MODE = os.getenv("SARGAM_PIANIST_AGENT", "on").strip().lower()  # off | shadow | on
-PIANIST_AGENT_MODEL = os.getenv("SARGAM_AGENTIC_MODEL", "opencode/deepseek-v4-flash-free").strip()
+PIANIST_AGENT_MODEL = os.getenv("SARGAM_AGENTIC_MODEL", "opencode-go/muse-spark-1.3-contributor").strip()
 PIANIST_AGENT_MAX_TOOL_CALLS = int(os.getenv("SARGAM_AGENTIC_MAX_TOOL_CALLS", "8"))
 PIANIST_AGENT_MAX_REQUESTS = int(os.getenv("SARGAM_AGENTIC_MAX_REQUESTS", str(max(4, PIANIST_AGENT_MAX_TOOL_CALLS * 2 + 4))))
 PIANIST_AGENT_TIMEOUT_SECONDS = float(os.getenv("SARGAM_AGENTIC_TIMEOUT_SECONDS", "180"))
@@ -545,7 +545,7 @@ async def run_section_subagent(audio_filepath: str, start: float, end: float,
             "--agent", SECTION_AGENT,
             "--model", SECTION_MODEL,
             "--format", "json",
-            "--log-level", "ERROR",
+            "--log-level", "error",
             "--auto",
             prompt,
         ]
@@ -653,7 +653,7 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
             "--agent", AGENT_NAME,
             "--model", MODEL,
             "--format", "json",
-            "--log-level", "ERROR",
+            "--log-level", "error",
             "--auto",
             f"Transcribe this track using the exact path above: {audio_filepath}{key_hint}",
         ]

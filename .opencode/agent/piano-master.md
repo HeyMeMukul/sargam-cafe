@@ -1,7 +1,7 @@
 ---
 description: Piano Master agent that transcribes tracks by hit-and-trial note testing.
 mode: primary
-model: opencode/deepseek-v4-flash-free
+model: opencode-go/muse-spark-1.3-contributor
 permission:
   bash: allow
   read: allow
