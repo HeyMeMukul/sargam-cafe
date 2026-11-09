@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SargamKing ground-truth note annotation (v2)",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["start", "end", "midi"],
+    "properties": {
+      "start": {"type": "number", "minimum": 0, "description": "Note onset in seconds"},
+      "end": {"type": "number", "minimum": 0, "description": "Note offset in seconds"},
+      "midi": {"type": "integer", "minimum": 21, "maximum": 108},
+      "sargam": {"type": "string"},
+      "phrase_id": {"type": "integer", "minimum": 0}
+    }
+  },
+  "description": "One entry per sung event in time order. 10-20 clips minimum across singers/keys/tempos; expand to 50+."
+}

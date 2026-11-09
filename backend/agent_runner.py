@@ -69,6 +69,11 @@ PIANIST_AGENT_MODEL = os.getenv("SARGAM_AGENTIC_MODEL", "opencode-go/muse-spark-
 PIANIST_AGENT_MAX_TOOL_CALLS = int(os.getenv("SARGAM_AGENTIC_MAX_TOOL_CALLS", "8"))
 PIANIST_AGENT_MAX_REQUESTS = int(os.getenv("SARGAM_AGENTIC_MAX_REQUESTS", str(max(4, PIANIST_AGENT_MAX_TOOL_CALLS * 2 + 4))))
 PIANIST_AGENT_TIMEOUT_SECONDS = float(os.getenv("SARGAM_AGENTIC_TIMEOUT_SECONDS", "180"))
+# Pianist v2 flags (deterministic, safe fallbacks; see docs/PIANIST_V2_ROADMAP.md).
+_PIANIST_V2 = os.getenv("SARGAM_PIANIST_V2", "off").strip().lower() in {"on", "always"}
+ENSEMBLE_MODE = os.getenv("SARGAM_ENSEMBLE", "on" if _PIANIST_V2 else "off").strip().lower()
+ARRANGER_MODE = os.getenv("SARGAM_ARRANGER", "v2" if _PIANIST_V2 else "v1").strip().lower()
+PERFORMANCE_MODE = os.getenv("SARGAM_PERFORMANCE", "v2" if _PIANIST_V2 else "v1").strip().lower()
 
 # Matches note names like C4, C#4, D#5, F#3, B2 inside a bash command
 NOTE_RE = re.compile(r"\b([A-G](?:#|b)?[0-9])\b")
@@ -584,6 +589,8 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         f"reference={'on' if REFERENCE_FILE else 'off'}, "
         f"decoder=chromatic_bridge_{CHROMATIC_BRIDGE_MODE or 'on'}, "
         f"pianist_agent={PIANIST_AGENT_MODE or 'off'}, "
+        f"ensemble={ENSEMBLE_MODE or 'off'}, arranger={ARRANGER_MODE or 'v1'}, "
+        f"performance={PERFORMANCE_MODE or 'v1'}, "
         f"rosvot={'ready' if ROSVOT_READY else 'unavailable'}, "
         f"rosvot_python={'custom' if ROSVOT_PYTHON else 'backend'}"
     )
@@ -735,6 +742,30 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
     tempo = melody.get("tempo")
     beats = melody.get("beats") or []
     guided_mode = bool(melody.get("reference_alignment"))
+    # --- Pianist v2 ensemble: ROSVOT boundaries + CREPE pitch (safe fallback) ---
+    if ENSEMBLE_MODE in {"on", "always"} and not guided_mode:
+        try:
+            from pianist_v2.ensemble import merge_rosvot_crepe as _merge
+
+            primary = str(melody.get("transcriber") or "")
+            secondary = None
+            if primary.startswith("rosvot"):
+                secondary = await run_script(VOCAL_SCRIPT, audio_filepath, final["root"], "--thaat", final["thaat"])
+            elif primary.startswith("crepe"):
+                secondary = await run_script(ROSVOT_SCRIPT, audio_filepath, final["root"], "--thaat", final["thaat"])
+            if secondary and secondary.get("melody"):
+                if primary.startswith("rosvot"):
+                    merged = _merge(secondary.get("melody") or [], melody.get("melody") or [])
+                else:
+                    merged = _merge(melody.get("melody") or [], secondary.get("melody") or [])
+                if merged:
+                    full_segments = merged
+                    melody = dict(melody)
+                    melody["melody"] = full_segments
+                    melody["transcriber"] = "rosvot+crepe_ensemble"
+                    await log_callback(f"[System] Ensemble merged {len(full_segments)} events (ROSVOT+CREPE).")
+        except Exception as exc:
+            await log_callback(f"[System] Ensemble fallback ({type(exc).__name__}); keeping primary.")
     agentic_shadow = None
     if PIANIST_AGENT_MODE in {"shadow", "on"} and run_opencode_micro_agent is not None and not guided_mode:
         await log_callback(f"[System] Running evidence-gated pianist agent ({PIANIST_AGENT_MODE})...")
@@ -979,9 +1010,37 @@ async def transcribe_audio_agentic(audio_filepath: str, log_callback):
         flagged.append(seg)
     final_cleaned = flagged
 
+    # --- Pianist v2: arrangement + performance (all safe fallbacks) ---
+    # v2 arranges the flagged melody for piano (bass/harmony/fills) and applies
+    # phrase-arch timing/dynamics. Any failure preserves the v1 flagged score.
+    v2_applied = {"arranger": False, "performance": False}
+    if ARRANGER_MODE == "v2":
+        try:
+            from pianist_v2.arranger import arrange_for_piano as _arrange
+
+            arranged = _arrange(final_cleaned, chords)
+            if arranged:
+                final_cleaned = sorted(arranged, key=lambda s: s["start"])
+                v2_applied["arranger"] = True
+                await log_callback(f"[System] Pianist v2 arranger: {len(final_cleaned)} piano events.")
+        except Exception as exc:
+            await log_callback(f"[System] v2 arranger fallback ({type(exc).__name__}); keeping melody.")
+    if PERFORMANCE_MODE == "v2":
+        try:
+            from pianist_v2.performance import apply_performance as _perform
+
+            performed = _perform(final_cleaned, tempo=tempo, seed=42)
+            if performed:
+                final_cleaned = performed
+                v2_applied["performance"] = True
+                await log_callback("[System] Pianist v2 performance applied (phrase-arch).")
+        except Exception as exc:
+            await log_callback(f"[System] v2 performance fallback ({type(exc).__name__}); keeping timing.")
+
     sargam_counts = {}
     for seg in final_cleaned:
-        sargam_counts[seg["sargam"]] = sargam_counts.get(seg["sargam"], 0) + 1
+        if seg.get("sargam"):
+            sargam_counts[seg["sargam"]] = sargam_counts.get(seg["sargam"], 0) + 1
 
     transcriber = melody.get("transcriber") or next(
         (seg.get("source_model") for seg in final_cleaned if seg.get("source_model")),
